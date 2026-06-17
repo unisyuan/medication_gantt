@@ -1,0 +1,2815 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臨床給藥甘特圖系統 (Clinical Medication Gantt Chart)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* CSS Variables for Premium Slate & Indigo Theme */
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151d30;
+      --card-bg-hover: #1e2942;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-primary: #6366f1; /* Indigo */
+      --accent-primary-hover: #4f46e5;
+      --accent-secondary: #0ea5e9; /* Sky */
+      --success: #10b981; /* Emerald */
+      --warning: #f59e0b; /* Amber */
+      --danger: #ef4444; /* Rose */
+      --grid-line: rgba(255, 255, 255, 0.04);
+      --timeline-bg: rgba(11, 15, 25, 0.6);
+      --font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+      --input-bg: #0b0f19;
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-hover: #f1f5f9;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-primary: #4f46e5;
+      --accent-primary-hover: #3730a3;
+      --accent-secondary: #0284c7;
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --grid-line: rgba(0, 0, 0, 0.05);
+      --timeline-bg: rgba(248, 250, 252, 0.8);
+      --input-bg: #f1f5f9;
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Layout Structure */
+    .dashboard-container {
+      max-width: 1800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(14, 165, 233, 0.05));
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-title h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #818cf8, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    [data-theme="light"] .header-title h1 {
+      background: linear-gradient(to right, #4f46e5, #0284c7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-title p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Buttons */
+    button {
+      font-family: var(--font-family);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: var(--accent-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background-color: var(--card-bg-hover);
+    }
+
+    .btn-success {
+      background-color: var(--success);
+      color: #ffffff;
+    }
+    .btn-success:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    /* Grid Layout */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+      align-items: start;
+      transition: all 0.3s ease;
+    }
+
+    .grid-layout.full-screen {
+      grid-template-columns: 1fr;
+    }
+
+    .grid-layout.full-screen .input-panel {
+      display: none;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: calc(100vh - 120px);
+    }
+
+    .input-panel {
+      height: calc(100vh - 120px);
+    }
+
+    .output-panel {
+      height: calc(100vh - 120px);
+      min-width: 0; /* Prevents flex items from overflowing */
+      overflow-y: auto;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-scrollable {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .card-scrollable::-webkit-scrollbar, .output-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .card-scrollable::-webkit-scrollbar-track, .output-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .card-scrollable::-webkit-scrollbar-thumb, .output-panel::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+
+    /* Smart Paste Area */
+    .smart-paste-container {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(16, 185, 129, 0.04));
+      border: 1px dashed var(--accent-primary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .smart-paste-container label {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-primary);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .smart-paste-container textarea {
+      width: 100%;
+      height: 80px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      resize: none;
+      margin-top: 8px;
+      font-family: monospace;
+      outline: none;
+    }
+
+    [data-theme="light"] .smart-paste-container textarea {
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .text-input {
+      width: 100%;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    textarea.section-input {
+      width: 100%;
+      height: 110px;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-family: 'Consolas', 'Monaco', monospace;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea.section-input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    /* Tabs Component */
+    .tabs-header {
+      display: flex;
+      gap: 6px;
+      background-color: var(--input-bg);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      text-align: center;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      justify-content: center;
+    }
+
+    .tab-btn.active {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Gantt Chart View Layout */
+    .gantt-view-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    /* Stats Dashboard */
+    .stats-dashboard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .stat-card {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .stat-icon {
+      font-size: 1.5rem;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: rgba(99, 102, 241, 0.12);
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-val {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .stat-lbl {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Gantt Filter Bar */
+    .gantt-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 16px;
+      align-items: center;
+    }
+
+    .gantt-filters label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .filter-select {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .filter-date {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    /* Timeline & Gantt Layout */
+    .gantt-chart-wrapper {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--input-bg);
+      flex: 3;
+      min-height: 250px;
+      max-height: 550px;
+    }
+
+    .gantt-header {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--card-bg);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .gantt-header-label {
+      padding: 14px 18px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+    }
+
+    .gantt-header-timeline {
+      display: grid;
+      width: 100%;
+    }
+
+    .gantt-day-header {
+      padding: 8px 10px;
+      border-right: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+    }
+
+    .gantt-day-header:last-child {
+      border-right: none;
+    }
+
+    .day-title {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .day-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .hour-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      padding: 0 4px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    /* Gantt Rows & Categories */
+    .gantt-rows-container {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .gantt-category-row {
+      background-color: rgba(99, 102, 241, 0.04);
+      padding: 8px 18px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--accent-primary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-badge {
+      background-color: rgba(99, 102, 241, 0.15);
+      color: var(--accent-primary);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+    }
+
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--card-bg);
+      min-height: 42px;
+    }
+
+    .gantt-row:hover {
+      background-color: var(--card-bg-hover);
+    }
+
+    .drug-details-cell {
+      padding: 3px 12px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      overflow: hidden;
+    }
+
+    .drug-names {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .primary-name {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
+    .primary-name:hover {
+      color: var(--accent-secondary);
+    }
+
+    .secondary-name {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .drug-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-reg { background-color: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .badge-stat { background-color: rgba(236, 72, 153, 0.15); color: #f472b6; }
+    .badge-prn { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-route { background-color: rgba(14, 165, 233, 0.12); color: #38bdf8; }
+    .badge-active { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-ended { background-color: rgba(156, 163, 175, 0.15); color: #9ca3af; }
+
+    /* Timeline Bars & Grid */
+    .timeline-cell {
+      position: relative;
+      background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px);
+      background-size: 12.5% 100%; /* Default 8 segments/days, adjusted by JS */
+      width: 100%;
+      height: 100%;
+      min-height: 42px;
+    }
+
+    .order-bar {
+      position: absolute;
+      height: 12px;
+      border-radius: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.85;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .order-bar:hover {
+      opacity: 1;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    }
+
+    .order-bar-reg { background: linear-gradient(to right, #6366f1, #818cf8); }
+    .order-bar-stat { background: linear-gradient(to right, #ec4899, #f472b6); }
+    .order-bar-prn { background: linear-gradient(to right, #f59e0b, #fbbf24); }
+    .order-bar-ended { opacity: 0.35 !important; }
+
+    .admin-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #38bdf8;
+      border: 1.5px solid #ffffff;
+      transform: translateX(-50%);
+      top: 50%;
+      margin-top: -5px;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+      transition: transform 0.15s ease;
+    }
+
+    .admin-dot:hover {
+      transform: translateX(-50%) scale(1.3);
+    }
+
+    /* Omitted/Held Doses Style */
+    .admin-dot.omitted {
+      background-color: var(--danger) !important;
+      border: 1.5px solid #ffffff !important;
+      color: #ffffff;
+      font-size: 8px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 13px;
+      height: 13px;
+      margin-top: -6.5px;
+      box-shadow: 0 0 5px rgba(239, 68, 68, 0.8);
+    }
+
+    /* Log Table View */
+    .log-table-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      min-height: 200px;
+      flex: 2;
+    }
+
+    .log-table-wrapper {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .log-table-container h3 {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+
+
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+
+    .log-table th, .log-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .log-table th {
+      background-color: var(--input-bg);
+      font-weight: 700;
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .log-table tr:hover {
+      background-color: var(--card-bg-hover);
+    }
+
+    .nurse-tag {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    [data-theme="light"] .nurse-tag {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    /* Formatted Note Preview Pane */
+    #preview-output-wrapper, #markdown-output-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 500px;
+    }
+
+    #preview-output {
+      width: 100%;
+      flex: 1;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-main);
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+    }
+
+    #markdown-output {
+      width: 100%;
+      flex: 1;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-main);
+      padding: 20px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+      white-space: pre;
+      overflow: auto;
+      resize: none;
+      outline: none;
+    }
+
+    /* Rendered HTML Styling inside preview */
+    .preview-body h1 {
+      font-size: 1.35rem;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+    }
+
+    .preview-body h2 {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: var(--accent-secondary);
+      border-left: 3px solid var(--accent-primary);
+      padding-left: 8px;
+    }
+
+    .preview-body p {
+      margin-bottom: 10px;
+    }
+
+    .preview-body ol, .preview-body ul {
+      margin-bottom: 15px;
+      margin-left: 24px;
+    }
+
+    .preview-body li {
+      margin-bottom: 4px;
+    }
+
+    .preview-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px 0;
+      font-size: 0.82rem;
+    }
+
+    .preview-body th, .preview-body td {
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .preview-body th {
+      background-color: rgba(255, 255, 255, 0.04);
+      font-weight: 700;
+    }
+
+    [data-theme="light"] .preview-body th {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    /* Details Modal popup */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 650px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.open .modal {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .btn-close {
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 1.3rem;
+      border: none;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .btn-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .modal-info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .remark-box {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .admin-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .admin-history-item {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .admin-history-item.omitted-item {
+      border-left: 3px solid var(--danger);
+    }
+
+    .admin-history-item .status-label {
+      font-weight: 700;
+    }
+
+    .status-label.status-given { color: var(--success); }
+    .status-label.status-held { color: var(--danger); }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background-color: var(--success);
+      color: #ffffff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 2000;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <header>
+      <div class="header-title">
+        <h1>🏥 臨床給藥甘特圖系統</h1>
+        <p>藥物動態甘特圖 • 護理簽核與未給藥解析 (100% 本機端運作)</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-secondary" id="btnThemeToggle">🌓 切換佈景</button>
+        <button class="btn-secondary" id="btnDatabaseManager">⚙️ 藥物資料庫</button>
+        <button class="btn-primary" id="btnFullScreenToggle">🖥️ 滿版顯示</button>
+      </div>
+    </header>
+
+    <div class="grid-layout" id="gridLayout">
+      <!-- LEFT INPUT PANEL -->
+      <div class="card input-panel">
+        <div class="card-title">
+          <span>📥 原始資料輸入</span>
+          <button class="btn-secondary" style="font-size:0.75rem; padding: 4px 10px;" id="btnClearAll">🗑️ 清空</button>
+        </div>
+
+        <div class="card-scrollable" style="display: flex; flex-direction: column; height: 100%;">
+          <div class="form-group" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="inputMeds" style="margin-bottom: 8px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.85rem;">藥物與給藥紀錄原始資料</label>
+            <textarea id="inputMeds" class="section-input" style="flex: 1; min-height: 250px; height: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; padding: 12px; outline: none; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-main);" placeholder="在此貼上原始藥囑與給藥簽核紀錄..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT OUTPUT PANEL -->
+      <div class="card output-panel">
+        <div class="card-title">
+          <span>📊 藥物給藥甘特圖</span>
+        </div>
+
+        <div class="gantt-view-container">
+          <!-- Stats Dashboard -->
+          <div class="stats-dashboard" id="statsDashboard">
+            <!-- Loaded Dynamically -->
+          </div>
+
+          <!-- Gantt Filters -->
+          <div class="gantt-filters">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label for="filterSearch">🔍 搜尋:</label>
+              <input type="text" id="filterSearch" class="filter-select" placeholder="學名或商品名..." style="width:160px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label for="filterCategory">📁 類別:</label>
+              <select id="filterCategory" class="filter-select">
+                <option value="all">全部類別</option>
+                <!-- Loaded Dynamically -->
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label for="filterType">⏱️ 類型:</label>
+              <select id="filterType" class="filter-select">
+                <option value="all">全部</option>
+                <option value="常規">常規</option>
+                <option value="臨時">臨時</option>
+                <option value="PRN">PRN</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+              <label>📅 時間起訖:</label>
+              <input type="date" id="filterStartDate" class="filter-date">
+              <span style="color:var(--text-muted);">至</span>
+              <input type="date" id="filterEndDate" class="filter-date">
+              <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" id="btnResetFilters">重設</button>
+            </div>
+          </div>
+
+          <!-- Gantt Chart Area -->
+          <div class="gantt-chart-wrapper">
+            <div class="gantt-header">
+              <div class="gantt-header-label">藥物學名 (商品名/規格)</div>
+              <div class="gantt-header-timeline" id="ganttTimelineHeader">
+                <!-- Generated dynamically -->
+              </div>
+            </div>
+            <div class="gantt-rows-container" id="ganttRows">
+              <!-- Generated dynamically -->
+            </div>
+          </div>
+
+          <!-- Log Table -->
+          <div class="log-table-container">
+            <h3>📋 實際給藥簽核歷史紀錄</h3>
+            <div class="log-table-wrapper">
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th>執行時間</th>
+                    <th>藥物學名</th>
+                    <th>途徑</th>
+                    <th>劑量</th>
+                    <th>類型</th>
+                    <th>狀態</th>
+                    <th>執行護理師</th>
+                  </tr>
+                </thead>
+                <tbody id="logTableBody">
+                  <!-- Generated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAILS MODAL -->
+  <div class="modal-overlay" id="detailsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalGenericName">藥物詳細資訊</h3>
+        <button class="btn-close" id="btnModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-info-item">
+            <span class="info-label">藥理分類</span>
+            <span class="info-value" id="modalCategory">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">商品名稱與規格</span>
+            <span class="info-value" id="modalBrandName">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">給藥途徑</span>
+            <span class="info-value" id="modalRoute">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">單次劑量</span>
+            <span class="info-value" id="modalDose">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">開立頻次</span>
+            <span class="info-value" id="modalFreq">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">醫囑類型</span>
+            <span class="info-value" id="modalType">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">起訖區間</span>
+            <span class="info-value" id="modalDuration">-</span>
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">目前狀態</span>
+            <span class="info-value" id="modalStatus">-</span>
+          </div>
+        </div>
+
+        <span class="info-label">醫囑備註</span>
+        <div class="remark-box" id="modalRemark">-</div>
+
+        <span class="info-label">給藥簽核歷史 (<span id="modalAdminCount">0</span> 次)</span>
+        <div class="admin-history-list" id="modalAdminList">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="btnModalCloseFooter">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM DRUG DATABASE MANAGER MODAL -->
+  <div class="modal-overlay" id="dbModal">
+    <div class="modal" style="max-width: 850px;">
+      <div class="modal-header">
+        <h3>⚙️ 藥物名稱與學名/類別資料庫</h3>
+        <button class="btn-close" id="btnDbModalClose">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+        <p style="font-size:0.8rem; color:var(--text-muted);">
+          在此管理藥物匹配對應字典。系統解析藥單時，會搜尋商品名中的關鍵字，若符合則會自動轉換成所設定的<b>英文學名</b>與<b>藥理分類</b>。
+        </p>
+
+        <!-- New drug pair -->
+        <div style="background-color:var(--input-bg); border:1px solid var(--border-color); border-radius:8px; padding:14px; display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+          <div class="modal-info-item">
+            <span class="info-label">商品名關鍵字 (例如 topsym)</span>
+            <input type="text" id="addDbBrand" class="text-input" placeholder="如 topsym">
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">轉換為英文學名 (Generic)</span>
+            <input type="text" id="addDbGeneric" class="text-input" placeholder="如 Fluocinonide">
+          </div>
+          <div class="modal-info-item">
+            <span class="info-label">藥理/用途分類</span>
+            <input type="text" id="addDbCategory" class="text-input" placeholder="如 口腔抗菌與局部用藥">
+          </div>
+          <button class="btn-primary" id="btnSaveDbItem" style="height:40px;">新增/儲存</button>
+        </div>
+
+        <!-- Search Table -->
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="info-label">字典清單</span>
+          <input type="text" id="searchDbInput" class="text-input" placeholder="🔍 搜尋對應庫..." style="width:220px; padding: 6px 12px; font-size:0.8rem;">
+        </div>
+
+        <div style="border:1px solid var(--border-color); border-radius:8px; max-height:280px; overflow-y:auto;">
+          <table class="log-table" style="font-size:0.78rem;">
+            <thead>
+              <tr style="position:sticky; top:0; background-color:var(--card-bg); z-index:1;">
+                <th>商品名關鍵字</th>
+                <th>轉換為學名 (Generic)</th>
+                <th>藥理分類</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="dbTableBody">
+              <!-- Loaded dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnResetDb" style="color:var(--danger); border-color:var(--danger);">重設為預設庫</button>
+        <button class="btn-primary" id="btnDbModalCloseFooter">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST MESSAGE -->
+  <div class="toast" id="toastMessage">📋 成功複製！</div>
+
+  <script>
+    // =========================================================================
+    // 1. DEFAULT DRUG DATABASE MAP (Comprehensive mappings of EHR names to generic)
+    // =========================================================================
+    const defaultDrugMappings = {
+      // 降血糖、血脂與代謝 (Metabolism & Hypoglycemics)
+      "NovoRapid": { generic: "Insulin Aspart (NovoRapid)", category: "降血糖、血脂與代謝" },
+      "Toujeo": { generic: "Insulin Glargine (Toujeo U-300)", category: "降血糖、血脂與代謝" },
+      "Lipitor": { generic: "Atorvastatin (Lipitor)", category: "降血糖、血脂與代謝" },
+      "Trajenta": { generic: "Linagliptin (Trajenta)", category: "降血糖、血脂與代謝" },
+      "Crestor": { generic: "Rosuvastatin (Crestor)", category: "降血糖、血脂與代謝" },
+      "Henformin": { generic: "Metformin (Henformin)", category: "降血糖、血脂與代謝" },
+      "Jardiance": { generic: "Empagliflozin (Jardiance)", category: "降血糖、血脂與代謝" },
+      "Binin-U": { generic: "Thiamine Vitamin B1 (Binin-U)", category: "降血糖、血脂與代謝" },
+      "EuriCON": { generic: "Benzbromarone (EuriCON)", category: "降血糖、血脂與代謝" },
+      "Folic acid": { generic: "Folic Acid", category: "降血糖、血脂與代謝" },
+      "Thiamine": { generic: "Thiamine Vitamin B1", category: "降血糖、血脂與代謝" },
+      "VitaCICOL": { generic: "Vitamin C (VitaCICOL)", category: "降血糖、血脂與代謝" },
+      "Ezetrol": { generic: "Ezetimibe (Ezetrol)", category: "降血糖、血脂與代謝" },
+
+      // 心血管與降血壓 (Cardiovascular & Diuretics)
+      "Heparin": { generic: "Heparin Sodium", category: "心血管與降血壓" },
+      "Cordarone": { generic: "Amiodarone (Cordarone)", category: "心血管與降血壓" },
+      "Amiorone": { generic: "Amiodarone (Amiorone)", category: "心血管與降血壓" },
+      "Fursemide": { generic: "Furosemide (Fursemide)", category: "心血管與降血壓" },
+      "Furide": { generic: "Furosemide (Furide)", category: "心血管與降血壓" },
+      "Busix": { generic: "Bumetanide (Busix)", category: "心血管與降血壓" },
+      "NTG": { generic: "Nitroglycerin (NTG)", category: "心血管與降血壓" },
+      "Norepinephrine": { generic: "Norepinephrine", category: "心血管與降血壓" },
+      "Concor": { generic: "Bisoprolol (Concor)", category: "心血管與降血壓" },
+      "Cartil": { generic: "Diltiazem (Cartil)", category: "心血管與降血壓" },
+      "Neuquinon": { generic: "Coenzyme Q10 (Neuquinon)", category: "心血管與降血壓" },
+      "Lanoxin": { generic: "Digoxin (Lanoxin)", category: "心血管與降血壓" },
+      "Bokey": { generic: "Aspirin (Bokey)", category: "心血管與降血壓" },
+      "Plavix": { generic: "Clopidogrel (Plavix)", category: "心血管與降血壓" },
+      "Eliquis": { generic: "Apixaban (Eliquis)", category: "心血管與降血壓" },
+      "Acetazolamide": { generic: "Acetazolamide", category: "心血管與降血壓" },
+      "Coralan": { generic: "Ivabradine (Coralan)", category: "心血管與降血壓" },
+      "Tonvasca": { generic: "Amlodipine / Valsartan", category: "心血管與降血壓" },
+      "Eazide": { generic: "Trichlormethiazide (Eazide)", category: "心血管與降血壓" },
+      "Xarelto": { generic: "Rivaroxaban (Xarelto)", category: "心血管與降血壓" },
+      "Promostan": { generic: "Alprostadil (Promostan)", category: "心血管與降血壓" },
+
+      // 中樞神經與鎮靜 (CNS & Anesthetics)
+      "Morphine": { generic: "Morphine Sulfate", category: "中樞神經與鎮靜" },
+      "Fentanyl": { generic: "Fentanyl", category: "中樞神經與鎮靜" },
+      "Ketalar": { generic: "Ketamine (Ketalar)", category: "中樞神經與鎮靜" },
+      "Midatin": { generic: "Midazolam (Midatin)", category: "中樞神經與鎮靜" },
+      "Relaxin": { generic: "Cisatracurium (Relaxin)", category: "中樞神經與鎮靜" },
+      "Fresofol": { generic: "Propofol (Fresofol)", category: "中樞神經與鎮靜" },
+      "Seroquel": { generic: "Quetiapine (Seroquel)", category: "中樞神經與鎮靜" },
+      "Clonopam": { generic: "Clonazepam (Clonopam)", category: "中樞神經與鎮靜" },
+      "Keppra": { generic: "Levetiracetam (Keppra)", category: "中樞神經與鎮靜" },
+
+      // 抗感染用藥 (Anti-infectives)
+      "Cefin": { generic: "Ceftriaxone (Cefin)", category: "抗感染用藥" },
+      "Doxycycline": { generic: "Doxycycline", category: "抗感染用藥" },
+      "Tapimycin": { generic: "Piperacillin / Tazobactam (Tapimycin)", category: "抗感染用藥" },
+      "Antifect": { generic: "Ceftazidime (Antifect)", category: "抗感染用藥" },
+      "Culin": { generic: "Imipenem / Cilastatin (Culin)", category: "抗感染用藥" },
+      "Diflucan": { generic: "Fluconazole (Diflucan)", category: "抗感染用藥" },
+      "Fluene": { generic: "Fluconazole (Fluene)", category: "抗感染用藥" },
+      "Teicod": { generic: "Teicoplanin (Teicod)", category: "抗感染用藥" },
+      "Levofloxacin": { generic: "Levofloxacin", category: "抗感染用藥" },
+      "Cravit": { generic: "Levofloxacin (Cravit)", category: "抗感染用藥" },
+      "Colimycin": { generic: "Colistin (Colimycin)", category: "抗感染用藥" },
+      "Seforce": { generic: "Ciprofloxacin (Seforce)", category: "抗感染用藥" },
+
+      // 解熱鎮痛消炎與抗過敏 (Analgesics & Steroids & Allergy)
+      "Diphenhydramine": { generic: "Diphenhydramine", category: "解熱鎮痛消炎與抗過敏" },
+      "Pilian": { generic: "Cyproheptadine (Pilian)", category: "解熱鎮痛消炎與抗過敏" },
+      "Mepron": { generic: "Methylprednisolone (Mepron)", category: "解熱鎮痛消炎與抗過敏" },
+      "Acetal": { generic: "Acetaminophen (Acetal)", category: "解熱鎮痛消炎與抗過敏" },
+      "Utraphen": { generic: "Acetaminophen / Tramadol", category: "解熱鎮痛消炎與抗過敏" },
+      "Celebrex": { generic: "Celecoxib (Celebrex)", category: "解熱鎮痛消炎與抗過敏" },
+      "Lyrica": { generic: "Pregabalin (Lyrica)", category: "解熱鎮痛消炎與抗過敏" },
+      "Solacon": { generic: "Chlorzoxazone (Solacon)", category: "解熱鎮痛消炎與抗過敏" },
+      "Broen-C": { generic: "Bromelain / L-Cystine (Broen-C)", category: "解熱鎮痛消炎與抗過敏" },
+      "Hydrocortisone": { generic: "Hydrocortisone", category: "解熱鎮痛消炎與抗過敏" },
+
+      // 消化道用藥 (Gastrointestinal)
+      "Pantoloc": { generic: "Pantoprazole (Pantoloc)", category: "消化道用藥" },
+      "Dexilant": { generic: "Dexlansoprazole (Dexilant)", category: "消化道用藥" },
+      "Gaslan": { generic: "Famotidine (Gaslan)", category: "消化道用藥" },
+      "Through": { generic: "Sennosides (Through)", category: "消化道用藥" },
+      "Bao-Gan": { generic: "Silymarin (Bao-Gan)", category: "消化道用藥" },
+      "Promeran": { generic: "Metoclopramide (Promeran)", category: "消化道用藥" },
+      "Mopride": { generic: "Mosapride (Mopride)", category: "消化道用藥" },
+      "Imolex": { generic: "Loperamide (Imolex)", category: "消化道用藥" },
+      "Smecta": { generic: "Dioctahedral Smectite (Smecta)", category: "消化道用藥" },
+      "Bisadyl": { generic: "Bisacodyl (Bisadyl)", category: "消化道用藥" },
+      "Takepron": { generic: "Lansoprazole (Takepron)", category: "消化道用藥" },
+
+      // 呼吸道用藥 (Respiratory)
+      "Combivent": { generic: "Ipratropium / Salbutamol", category: "呼吸道用藥" },
+      "Atrovent": { generic: "Ipratropium Bromide (Atrovent)", category: "呼吸道用藥" },
+      "SpiOLTO": { generic: "Tiotropium / Olodaterol", category: "呼吸道用藥" },
+      "Actein": { generic: "Acetylcysteine (Actein)", category: "呼吸道用藥" },
+      "Romicon-A": { generic: "Romicon-A (Antitussive)", category: "呼吸道用藥" },
+      "Butanyl": { generic: "Terbutaline (Butanyl)", category: "呼吸道用藥" },
+
+      // 電解質、點滴與水份補充 (Fluid & Electrolytes)
+      "D5W": { generic: "Dextrose 5% in Water", category: "電解質、點滴與水份補充" },
+      "MgSO4": { generic: "Magnesium Sulfate 10%", category: "電解質、點滴與水份補充" },
+      "Rolikan": { generic: "Sodium Bicarbonate 7%", category: "電解質、點滴與水份補充" },
+      "KCl": { generic: "Potassium Chloride", category: "電解質、點滴與水份補充" },
+      "Normal Saline": { generic: "Normal Saline 0.9%", category: "電解質、點滴與水份補充" },
+      "NaCl": { generic: "Sodium Chloride", category: "電解質、點滴與水份補充" },
+      "Haforman": { generic: "Lactated Ringer's (Haforman)", category: "電解質、點滴與水份補充" },
+      "Const-K": { generic: "Potassium Chloride (Const-K)", category: "電解質、點滴與水份補充" },
+      "K-Glu": { generic: "Potassium Gluconate (K-Glu)", category: "電解質、點滴與水份補充" },
+      "Albu Rx": { generic: "Albumin (Albu Rx)", category: "電解質、點滴與水份補充" },
+      "Calglon": { generic: "Calcium Gluconate (Calglon)", category: "電解質、點滴與水份補充" },
+      "Prismasol": { generic: "CRRT Solution (Prismasol B0)", category: "電解質、點滴與水份補充" },
+      "Vitagen": { generic: "Dextrose 50% (Vitagen)", category: "電解質、點滴與水份補充" },
+      "Addaven": { generic: "Trace Elements (Addaven)", category: "電解質、點滴與水份補充" },
+      "Lyo-Povigent": { generic: "TPN Multivitamins (Lyo-Povigent)", category: "電解質、點滴與水份補充" },
+      "Glycophos": { generic: "Sodium Glycerophosphate (Glycophos)", category: "電解質、點滴與水份補充" },
+
+      // 口腔抗菌與局部用藥 (Topical & Local)
+      "Parmason": { generic: "Chlorhexidine Mouthwash 0.2%", category: "口腔抗菌與局部用藥" },
+      "ZnO": { generic: "Zinc Oxide Ointment", category: "口腔抗菌與局部用藥" },
+      "BioMYCIN": { generic: "Neomycin / Bacitracin Ointment", category: "口腔抗菌與局部用藥" },
+      "Topsym": { generic: "Fluocinonide Cream 0.05%", category: "口腔抗菌與局部用藥" },
+      "Cividoid": { generic: "Heparinoid Gel (Cividoid)", category: "口腔抗菌與局部用藥" },
+      "CB": { generic: "Chlorhexidine / Benzocaine Cream", category: "口腔抗菌與局部用藥" },
+
+      // 其他 (Others)
+      "Transamin": { generic: "Tranexamic Acid (Transamin)", category: "其他 (Others)" }
+    };
+
+
+    // Global drugMappings dictionary
+    let drugMappings = {};
+    let parsedOrders = [];
+    let activeTimelineStart = new Date().getTime();
+    let activeTimelineEnd = new Date().getTime();
+
+    // Ordered Category List for rendering
+    const categoryOrder = [
+      "心血管與降血壓",
+      "中樞神經與鎮靜",
+      "抗感染用藥",
+      "解熱鎮痛消炎與抗過敏",
+      "消化道用藥",
+      "呼吸道用藥",
+      "電解質、點滴與水份補充",
+      "降血糖、血脂與代謝",
+      "口腔抗菌與局部用藥",
+      "其他 (Others)"
+    ];
+
+    // Default Preloaded Raw Medication Text (from User)
+    const demoMedicationRawText = `臨時藥囑	使用劑量	途徑	頻次	生效時間	結束時間	狀態
+ Pantoloc 針 40 mg/Vial	40  mg(1.Vial)	IVD	STAT領藥號:988	115/06/10 2211	115/06/11 2211	使用中
+醫囑備註: 仿單：建議以生理食鹽水稀釋，並單獨一條靜脈輸液體管路，稀釋後室溫存放最多24小時<2020/8/13>。
+115/06/11		0138 [詹瑋婷]						
+ Lipitor 錠劑 20 mg	1  Tab	PO	STAT領藥號:1024	115/06/10 2359	115/06/11 2359	使用中
+115/06/11		0138 [詹瑋婷]						
+ Plavix 錠劑 75 mg	1  Tab	PO	STAT領藥號:1024	115/06/10 2359	115/06/11 2359	使用中
+醫囑備註: 回去就可以吃
+115/06/11		0138 [詹瑋婷]						
+ 低 10 mg Xarelto 錠劑 粉字	1  Tab	PO	STAT領藥號:1024	115/06/10 2359	115/06/11 2359	使用中
+醫囑備註: 早上六點吃 6/11
+115/06/11		0318 [詹瑋婷] 未給:暫停使用						
+ Promostan 針 20 mcg/Vial	80  mcg(4.Vial)	IVD	STAT領藥號:3	115/06/11 0010	115/06/12 0010	使用中
+醫囑備註: in N/S 250, run 10 cc/hr,根據仿單，本品不建議使用於孕婦 (FDA懷孕分級C)<2018/11/1>。
+115/06/11		0138 [詹瑋婷]						
+ Cefin 針 三代 2 g/Vial	1  gm(0.5Vial)	IVD	STAT領藥號:11	115/06/11 0026	115/06/12 0026	使用中
+醫囑備註: 本品不得與含鈣溶液混合，會造成沉澱，如同一管路先後使用，必須徹底沖洗。腎功能不全、透析不需調整劑量。
+115/06/11		0138 [詹瑋婷]						
+ NovoRapid 胰島素筆 橘	1  IU(0.0033Pen)	SC	STAT領藥號:15	115/06/11 0029	115/06/12 0029	使用中
+醫囑備註: For RI scale,出院帶藥開立筆針頭請勿以材料開，請以藥品輸入PEN NEEDLE開立<2019/2/1>。
+115/06/11		0318 [詹瑋婷] 未給:領藥用						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:33	115/06/11 0120	115/06/12 0120	使用中
+115/06/11		0138 [詹瑋婷]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:37	115/06/11 0135	115/06/12 0135	使用中
+115/06/11		0151 [詹瑋婷]						
+ Norepinephrine 升壓 針 4 mg/Vial	16  mg(4.Vial)	IVD	STAT領藥號:38	115/06/11 0136	115/06/12 0136	使用中
+醫囑備註: 16mg in D5W 250ml with pump run 0-20ml/hr as titration, keep MBP>65mmHg,修改流速請直接用【更改備註】功能即可，請勿刪除重開，會重複給藥<2021/8/23>。
+115/06/11		0700 [詹瑋婷]						
+ Calglon 針 1 g/10 mL/Amp	1  gm(1.Amp)	IVD	STAT領藥號:64	115/06/11 0303	115/06/12 0303	使用中
+115/06/11		0318 [詹瑋婷]						
+ 【M3】BioMYCIN 軟膏 40 g/Tube	1  Tube	TOP	STAT領藥號:216	115/06/11 0850	115/06/12 0850	使用中
+醫囑備註: for wound CD,本品開封後不得辦理退藥，請勿退回藥局<2018/8/21>。
+115/06/11		0945 [張惟絜]						
+ Haforman (LR) 包 500 mL	250  mL(0.5Bag)	IVD	STAT領藥號:249	115/06/11 0921	115/06/12 0921	使用中
+115/06/11		0925 [張惟絜]						
+ 0.45% NaCl 綠瓶 信東 500 mL	500  mL(1.Bot)	IVD	STAT領藥號:552	115/06/11 1423	115/06/12 1423	使用中
+醫囑備註: with Rolikan 40ml, run with pump 60 ml/hr
+115/06/11		1536 [張惟絜]						
+ Rolikan 針 7% 20 mL/Amp	40  ml(2.Amp)	IVD	STAT領藥號:552	115/06/11 1423	115/06/12 1423	使用中
+醫囑備註: 40 ml add into half saline 500ml, run with pump 60 ml/hr,本品不建議與其他藥品混合，建議單獨一條管路，易產生沉澱 <2018/12/24>。
+115/06/11		1536 [張惟絜]						
+ Seforce 包 400 mg/200 mL	400  mg(1.Bag)	IVD	STAT領藥號:569	115/06/11 1437	115/06/12 1437	使用中
+醫囑備註: 仿單：建議單獨管路輸注。<2020/8/16>
+115/06/11		1536 [張惟絜]						
+ Tapimycin 針 2.25 g/Vial	4.5  gm(2.Vial)	IVD	STAT領藥號:569	115/06/11 1437	115/06/12 1437	使用中
+醫囑備註: with pump 4 hrs,具中高度腎損傷風險，請注意合併腎毒性藥物、脫水/高齡/腎功能異常病人安全性。
+115/06/11		1536 [張惟絜]						
+ Fentanyl 管二 高 0.5 mg/10 mL/Amp	1  mg(2.Amp)	IVD	STAT領藥號:941	115/06/11 2142	115/06/12 2142	使用中
+醫囑備註: 1mg + N/S 30ml(total 50ml), with pump run 0-5ml/hr as titration, keep CPOT<4,修改流速請直接用【更改備註】功能即可，請勿刪除重開，會重複給藥；不相容：Pantoloc<2021/8/23>。
+115/06/11		2142 [詹瑋婷/游家翔]						
+ Utraphen 錠劑 325/37.5 mg	1  Tab	PO	STAT領藥號:999	115/06/11 2345	115/06/12 2345	使用中
+115/06/12		0104 [詹瑋婷]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:46	115/06/12 0224	115/06/13 0224	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/12		0705 [詹瑋婷]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:204	115/06/12 0822	115/06/13 0822	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/12		1205 [張惟絜]						
+ Norepinephrine 升壓 針 4 mg/Vial	8  mg(2.Vial)	IVD	STAT領藥號:301	115/06/12 0946	115/06/13 0946	使用中
+醫囑備註: 8mg in D5W 500ml with pump run 0-40ml/hr as titration, keep MAP>65mmHg,修改流速請直接用【更改備註】功能即可，請勿刪除重開，會重複給藥<2021/8/23>。
+115/06/12		1205 [張惟絜]						
+ Fursemide 針 20 mg/2 mL/Amp	100  mg(5.Amp)	IVD	STAT領藥號:381	115/06/12 1107	115/06/13 1107	使用中
+醫囑備註: 5 amp in N/S 80cc， 1mg/1cc，with pump run 20cc/hr, ,具中高度腎損傷風險，請注意合併腎毒性藥物、脫水/高齡/腎功能異常病人安全性。
+115/06/12		1200 [張惟絜]						
+ Folic acid 錠劑 5 mg	1  Tab	PO	STAT領藥號:560	115/06/12 1327	115/06/13 1327	使用中
+115/06/12		1415 [張惟絜]						
+ Neuquinon 錠劑 10 mg	1  Tab	PO	STAT領藥號:560	115/06/12 1327	115/06/13 1327	使用中
+115/06/12		1415 [張惟絜]						
+ Heparin 抗凝血針 25000 IU/Vial	25000  IU(1.Vial)	IVD	STAT領藥號:835	115/06/12 1727	115/06/13 1727	使用中
+醫囑備註: 本品為Heparin原液，根據仿單開封後室溫至多保存14天，開封後不得退藥 <2018/1/2>
+115/06/12		1927 [張惟絜]						
+ Prismasol B0 Solution 5 L/Bag	15000  mL	IRR	STAT領藥號:837	115/06/12 1731	115/06/13 1731	使用中
+115/06/12		1927 [張惟絜]						
+ Heparin 抗凝血針 25000 IU/Vial	25000  IU(1.Vial)	IVD	STAT領藥號:922	115/06/12 1935	115/06/13 1935	使用中
+醫囑備註: For CRRT,本品為Heparin原液，根據仿單開封後室溫至多保存14天，開封後不得退藥 <2018/1/2>
+115/06/12		1936 [張惟絜]						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	60  ml(6.Amp)	IVD	STAT領藥號:1058	115/06/12 2307	115/06/13 2307	使用中
+醫囑備註: CRRT ,本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/12		2309 [張芷菱] 未給:領藥用						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:142	115/06/13 0552	115/06/14 0552	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/13		2000 [張芷菱]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:687	115/06/13 1856	115/06/14 1856	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/13		1950 [蔡承祐]						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	30  ml(3.Amp)	IVD	STAT領藥號:770	115/06/13 2156	115/06/14 2156	使用中
+醫囑備註: for CVVH,本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/13		2214 [張芷菱] 未給:領藥用						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	30  ml(3.Amp)	IVD	STAT領藥號:810	115/06/13 2305	115/06/14 2305	使用中
+醫囑備註: for CVVH,本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/13		2308 [張芷菱] 未給:領藥用						
+ MgSO4 針【紅標】 10% 20 mL	20  ml(1.Amp)	IVD	STAT領藥號:116	115/06/14 0523	115/06/15 0523	使用中
+醫囑備註: 本品為高濃度電解質液，用於心律不整建議劑量為1~2 gm靜脈注射15分鐘 (ACLS建議)<2018/8/13>。
+115/06/14		0528 [張芷菱]						
+ Rolikan 針 7% 20 mL/Amp	20  ml(1.Amp)	IVD	STAT領藥號:188	115/06/14 0728	115/06/15 0728	使用中
+醫囑備註: 本品不建議與其他藥品混合，建議單獨一條管路，易產生沉澱 <2018/12/24>。
+115/06/14		0818 [蔡承祐]						
+ 低 10 mg Xarelto 錠劑 粉字	0.5  Tab	PO	STAT領藥號:278	115/06/14 0943	115/06/15 0943	使用中
+115/06/14		1027 [蔡承祐]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:308	115/06/14 1025	115/06/15 1025	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/14		1140 [蔡承祐]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:478	115/06/14 1327	115/06/15 1327	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/14		1429 [蔡承祐]						
+ Mopride 錠劑 5 mg	1  Tab	PO	STAT領藥號:497	115/06/14 1343	115/06/15 1343	使用中
+115/06/14		1447 [蔡承祐]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:569	115/06/14 1526	115/06/15 1526	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/14		1550 [蔡承祐]						
+ Norepinephrine 升壓 針 4 mg/Vial	8  mg(2.Vial)	IVD	STAT領藥號:605	115/06/14 1612	115/06/15 1612	使用中
+醫囑備註: 修改流速請直接用【更改備註】功能即可，請勿刪除重開，會重複給藥<2021/8/23>。
+115/06/14		1618 [蔡承祐]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:35	115/06/15 0136	115/06/16 0136	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/15		0359 [黃宇晟]						
+ Hydrocortisone 針 100 mg/Vial	100  mg(1.Vial)	IVD	STAT領藥號:100	115/06/15 0526	115/06/16 0526	使用中
+115/06/15		0626 [黃宇晟]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	STAT領藥號:119	115/06/15 0602	115/06/16 0602	使用中
+醫囑備註: 開立領血自動加(N/S 500ML ST)醫囑
+115/06/15		0626 [黃宇晟]						
+ MgSO4 針【紅標】 10% 20 mL	20  ml(1.Amp)	IVD	STAT領藥號:120	115/06/15 0603	115/06/16 0603	使用中
+醫囑備註: 本品為高濃度電解質液，用於心律不整建議劑量為1~2 gm靜脈注射15分鐘 (ACLS建議)<2018/8/13>。
+115/06/15		0752 [黃宇晟]						
+ 【針】Vitagen (D50W) 20 mL/Amp	60  mL(3.Amp)	IVD	STAT領藥號:187	115/06/15 0726	115/06/16 0726	使用中
+醫囑備註: IV時，請小心避免滲漏。
+115/06/15		0734 [黃宇晟]						
+ Addaven 微量元素 針 10 mL	10  mL(1.Amp)	IVD	STAT領藥號:349	115/06/15 0943	115/06/16 0943	使用中
+醫囑備註: 1 amp (10ml) in D5W 500ml run 20ml/h.,成人每日建議量10 mL，開封後冷藏攝氏2-8度至多存放24小時，未用完請丟棄不得重複使用 <2019/1/30>。
+115/06/15		1108 [徐裎越]						
+ D5W 包 南光 500 mL	500  ml(1.Bag)	IVD	STAT領藥號:349	115/06/15 0943	115/06/16 0943	使用中
+115/06/15		1108 [徐裎越]						
+ Lyo-Povigent 針 4 mL【附溶劑】	4  mL	TPN	STAT領藥號:349	115/06/15 0943	115/06/16 0943	使用中
+醫囑備註: 1 amp (4ml) in D5W 500ml run 20ml/h.
+115/06/15		1108 [徐裎越]						
+ Thiamine 針 壽元廠 100 mg/2 mL	200  mg(2.Amp)	IV	STAT領藥號:349	115/06/15 0943	115/06/16 0943	使用中
+醫囑備註: 2 amp (4ml) in D5W 500ml run 20ml/h.
+115/06/15		1108 [徐裎越]						
+ VitaCICOL 維他命C 針 100 mg/2 mL	200  mg(2.Amp)	IVD	STAT領藥號:349	115/06/15 0943	115/06/16 0943	使用中
+醫囑備註: 2 amp (4ml) in D5W 20ml rapid ivd <10min Q8H,PN建議劑量 100-200 mg/天、重症病人 (尤其是維生素C不足) 可達 2-3 gm/天<2022/10/28>。
+115/06/15		1108 [徐裎越]						
+ Promeran 針 9.08 mg/2 mL/Amp	9.08  mg(1.Amp)	IVD	STAT領藥號:872	115/06/15 1613	115/06/16 1613	使用中
+醫囑備註: 本品含 HCl 鹽類劑量為 9.08 mg，不含鹽類為 7.68 mg，約等於 Pulin 一支劑量<2025/5/14>。
+115/06/15		1614 [徐裎越]						
+ Bisadyl 肛門栓劑 10 mg	2  Supp	REC	STAT領藥號:1091	115/06/15 2151	115/06/16 2151	使用中
+115/06/16		0639 [黃宇晟]						
+ Heparin 抗凝血針 25000 IU/Vial	25000  IU(1.Vial)	IVD	STAT領藥號:29	115/06/17 0202	115/06/18 0202	使用中
+醫囑備註: CVVH抗凝注射器:Heparin 2500U in N/S 50ml(50U/ml), keep APTT=40-50秒 ,本品為Heparin原液，根據仿單開封後室溫至多保存14天，開封後不得退藥 <2018/1/2>
+115/06/17		0858 [陳詩涵]						
+ Glycophos 針 20 mL	10  mL(0.5Amp)	IVD	STAT領藥號:115	115/06/17 0619	115/06/18 0619	使用中
+醫囑備註: 1/2 amp in 紫秤,健保規範限接受PPN、TPN補充，且有低血磷及相關症狀，成人限7天。<2024/5/16>
+115/06/17		0646 [林芝妤]						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	10  ml(1.Amp)	IVD	STAT領藥號:114	115/06/17 0619	115/06/18 0619	使用中
+醫囑備註: KCL 20 meq in N/S 100 ml IVD 1 hour via CVC,本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/17		0700 [林芝妤]						
+常規藥囑	使用劑量	途徑	頻次	生效時間	結束時間	狀態
+ Pantoloc 針 40 mg/Vial	40  mg(1.Vial)	IVD	QDAC	115/06/10 2211	115/06/17 1137	結束
+醫囑備註: 仿單：建議以生理食鹽水稀釋，並單獨一條靜脈輸液體管路，稀釋後室溫存放最多24小時<2020/8/13>。
+115/06/11		0639 [詹瑋婷]				
+115/06/12		0705 [詹瑋婷]				
+115/06/13		0603 [張芷菱]				
+115/06/14		0616 [張芷菱]				
+115/06/15		0627 [黃宇晟]				
+115/06/16		0639 [黃宇晟]				
+115/06/17		0646 [林芝妤]						
+ Actein 白 顆粒 200 mg	1  Pack	PO	BID	115/06/10 2358	115/06/24 2358	使用中
+115/06/11		0847 [張惟絜]		1613 [張惟絜]
+115/06/12		0911 [張惟絜]		1813 [張惟絜]
+115/06/13		0856 [蔡承祐]		1650 [蔡承祐]
+115/06/14		0904 [蔡承祐]		1656 [蔡承祐]
+115/06/15		0839 [徐裎越]		1622 [徐裎越]
+115/06/16		0846 [徐裎越]		1627 [徐裎越]
+115/06/17		0854 [陳詩涵]		1700				
+ Lipitor 錠劑 20 mg	1  Tab	PO	QD	115/06/10 2358	115/06/11 1335	結束
+115/06/11		0847 [張惟絜]						
+ Plavix 錠劑 75 mg	1  Tab	PO	QD	115/06/10 2358	115/06/24 2358	使用中
+115/06/11		0847 [張惟絜]				
+115/06/12		0911 [張惟絜]				
+115/06/13		0856 [蔡承祐]				
+115/06/14		0904 [蔡承祐]				
+115/06/15		0839 [徐裎越]				
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ Solacon 錠劑 200 mg	1  Tab	PO	BID	115/06/10 2358	115/06/11 2345	結束
+115/06/11		0847 [張惟絜]		1613 [張惟絜]				
+ 【E4】Trajenta 錠劑 5 mg	1  Tab	PO	QD	115/06/10 2358	115/06/24 2358	使用中
+115/06/11		0847 [張惟絜]				
+115/06/12		0911 [張惟絜]				
+115/06/13		0856 [蔡承祐]				
+115/06/14		0904 [蔡承祐]				
+115/06/15		0839 [徐裎越]				
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ 低 10 mg Xarelto 錠劑 粉字	1  Tab	PO	QDCC	115/06/10 2358	115/06/12 1326	結束
+醫囑備註: 早上六點吃 6/11
+115/06/11		0639 [詹瑋婷]				
+115/06/12		0705 [詹瑋婷]						
+ 藥包 Broen-C 錠劑	1  Tab	PO	BID	115/06/10 2358	115/06/12 0948	結束
+115/06/11		0847 [張惟絜]		1613 [張惟絜]
+115/06/12		0911 [張惟絜]						
+ Promostan 針 20 mcg/Vial	80  mcg(4.Vial)	IVD	QD	115/06/11 0010	115/06/12 0146	結束
+醫囑備註: in N/S 250ml, run 5-10 cc/hr,根據仿單，本品不建議使用於孕婦 (FDA懷孕分級C)<2018/11/1>。
+115/06/11		0847 [張惟絜]						
+ Haforman (LR) 包 500 mL	500  mL(1.Bag)	IVD	Q8H	115/06/11 0024	115/06/11 1422	結束
+醫囑備註: pump run 60ml/hr
+115/06/11		0400 [詹瑋婷]		1533 [張惟絜] 未給:已停用				
+ Cefin 針 三代 2 g/Vial	1  gm(0.5Vial)	IVD	Q12H	115/06/11 0026	115/06/11 1430	結束
+醫囑備註: 本品不得與含鈣溶液混合，會造成沉澱，如同一管路先後使用，必須徹底沖洗。腎功能不全、透析不需調整劑量。
+115/06/11		0847 [張惟絜]						
+ Parmason 漱口水 0.2% 200 mL	10  mL	GAR	Q8H	115/06/11 0027	115/07/11 0026	使用中
+醫囑備註: for mouth care,本品開封後不得辦理退藥，請勿退回藥局<2018/8/21>。
+115/06/11		0400 [詹瑋婷]		1533 [張惟絜]		2127 [詹瑋婷]
+115/06/12		0525 [詹瑋婷]		1205 [張惟絜]		2040 [張芷菱]
+115/06/13		0332		0411 [張芷菱]		1332 [蔡承祐]
+2037 [張芷菱]				
+115/06/14		0403 [張芷菱]		1316 [蔡承祐]		2035 [黃宇晟]
+115/06/15		0406 [黃宇晟]		1201 [徐裎越]		2100 [黃宇晟]
+115/06/16		0419 [黃宇晟]		1323 [徐裎越]		2033 [林芝妤]
+115/06/17		0436 [林芝妤]		1300		2100
+ 【RT給】Butanyl 吸入 5mg/2mL	1  UDV	INH	Q6H	115/06/11 0104	115/06/11 1010	結束
+醫囑備註: 因 Covid-19 感染風險，建議暫停使用本品以噴霧器(nebulizer)給藥，請改用其他吸入劑<2022/5/1>。
+115/06/11		0408 [施信宇]						
+ Keppra 溶液 100 mg/mL 300 mL/Bot	5  ml	PO	Q12H	115/06/11 0201	115/06/12 2351	結束
+醫囑備註: chronic prescription,腎功能不全：Clcr<30 250~500mg Q12H、HD：500~1000mg Q24H透析後給藥<2019/4/11>。
+115/06/11		0847 [張惟絜]		2127 [詹瑋婷]
+115/06/12		0911 [張惟絜]		2050 [張芷菱]				
+ 0.45% NaCl 綠瓶 信東 500 mL	500  mL(1.Bot)	IVD	QD	115/06/11 0618	115/06/14 0411	結束
+醫囑備註: for drugs
+115/06/11		0900 [張惟絜]				
+115/06/12		0900 [張惟絜]				
+115/06/13		0900 [蔡承祐]						
+ Albu Rx 25 白蛋白 50 mL/Bot	50  mL(1.Bot)	IVD	Q12H	115/06/11 0713	115/06/12 2352	結束
+醫囑備註: for shock *4 bots
+115/06/11		0847 [張惟絜]		2127 [詹瑋婷]
+115/06/12		0911 [張惟絜]		2049 [張芷菱]				
+ Seforce 包 400 mg/200 mL	400  mg(1.Bag)	IVD	Q12H	115/06/11 1433	115/06/12 1931	結束
+醫囑備註: 仿單：建議單獨管路輸注。<2020/8/16>
+115/06/11		2127 [詹瑋婷]				
+115/06/12		0911 [張惟絜]						
+ Tapimycin 針 2.25 g/Vial	4.5  gm(2.Vial)	IVD	Q8H	115/06/11 1433	115/06/12 1931	結束
+醫囑備註: with pump 4 hrs,具中高度腎損傷風險，請注意合併腎毒性藥物、脫水/高齡/腎功能異常病人安全性。
+115/06/11		2127 [詹瑋婷]				
+115/06/12		0525 [詹瑋婷]		1205 [張惟絜]				
+ 0.45% NaCl 綠瓶 信東 500 mL	500  mL(1.Bot)	IVD	Q6H	115/06/11 1518	115/06/13 0538	結束
+醫囑備註: with Rolikan 40ml, run with pump 50 ml/hr
+115/06/11		1700 [張惟絜]		2300 [詹瑋婷]
+115/06/12		0500 [詹瑋婷]		1100 [張惟絜]		1700 [張惟絜]
+2300				
+115/06/13		0500 [蔡承祐] 未給:已停用						
+ Rolikan 針 7% 20 mL/Amp	40  ml(2.Amp)	IVD	Q6H	115/06/11 1518	115/06/13 0546	結束
+醫囑備註: 40 ml add into normal saline 500ml, run with pump 50ml/hr,本品不建議與其他藥品混合，建議單獨一條管路，易產生沉澱 <2018/12/24>。
+115/06/11		1613 [張惟絜]		2341 [詹瑋婷]
+115/06/12		0458 [詹瑋婷]		1107 [張惟絜]		1813 [張惟絜]
+2300				
+115/06/13		0554 [張芷菱]						
+ Ezetrol 錠劑 10 mg	1  Tab	PO	QD	115/06/11 1523	115/07/11 1522	使用中
+115/06/12		0911 [張惟絜]				
+115/06/13		0856 [蔡承祐]				
+115/06/14		0904 [蔡承祐]				
+115/06/15		0839 [徐裎越]				
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ Utraphen 錠劑 325/37.5 mg	1  Tab	PO	Q12H	115/06/11 2345	115/06/25 2345	使用中
+115/06/12		0911 [張惟絜]		2053 [張芷菱]
+115/06/13		0856 [蔡承祐]		2037 [張芷菱]
+115/06/14		0904 [蔡承祐]		2035 [黃宇晟]
+115/06/15		0839 [徐裎越]		2100 [黃宇晟]
+115/06/16		0846 [徐裎越]		2033 [林芝妤]
+115/06/17		0854 [陳詩涵]		2100				
+ 藥包 Through 錠劑 20 mg	2  Tab	PO	HS	115/06/11 2346	115/06/25 2346	使用中
+115/06/12		2053 [張芷菱]				
+115/06/13		2037 [張芷菱]				
+115/06/14		2035 [黃宇晟]				
+115/06/15		2100 [黃宇晟]				
+115/06/16		2033 [林芝妤]				
+115/06/17		2100						
+ Promostan 針 20 mcg/Vial	80  mcg(4.Vial)	IVD	QD	115/06/12 0147	115/06/17 0147	結束
+醫囑備註: in N/S 250ml, run 5-10ml/hr (if SBP>100mmHg, run 10ml/hr, if SBP<100mmHg, run 5ml/hr),根據仿單，本品不建議使用於孕婦 (FDA懷孕分級C)<2018/11/1>。
+115/06/12		0911 [張惟絜]				
+115/06/13		0856 [蔡承祐]				
+115/06/14		0904 [蔡承祐]				
+115/06/15		0853 [徐裎越]				
+115/06/16		0846 [徐裎越]						
+ Toujeo 高濃度胰島素筆 綠 450 IU	8  IU(0.0178Pen)	SC	QD	115/06/12 0841	115/06/15 0726	結束
+醫囑備註: Hold if NPO or F/S<100mg/dl,本品為高濃度胰島素(U-300)請勿用胰島素空針抽取，會導致劑量錯誤<2021/12/24>。
+115/06/12		1030 [張惟絜]				
+115/06/13		0856 [蔡承祐]				
+115/06/14		1050 [蔡承祐]						
+ Folic acid 錠劑 5 mg	1  Tab	PO	QD	115/06/12 1327	115/06/19 1327	使用中
+115/06/13		0856 [蔡承祐]				
+115/06/14		0904 [蔡承祐]				
+115/06/15		0839 [徐裎越]				
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ Neuquinon 錠劑 10 mg	1  Tab	PO	BID	115/06/12 1327	115/06/19 1327	使用中
+115/06/12		1813 [張惟絜]				
+115/06/13		0856 [蔡承祐]		1650 [蔡承祐]
+115/06/14		0904 [蔡承祐]		1656 [蔡承祐]
+115/06/15		0839 [徐裎越]		1622 [徐裎越]
+115/06/16		0846 [徐裎越]		1627 [徐裎越]
+115/06/17		0854 [陳詩涵]		1700				
+ Fursemide 針 20 mg/2 mL/Amp	100  mg(5.Amp)	IVD	Q6H	115/06/12 1630	115/06/12 1930	結束
+醫囑備註: 5 amp in N/S 90cc， 1mg/1cc，with pump run 20 cc/hr,具中高度腎損傷風險，請注意合併腎毒性藥物、脫水/高齡/腎功能異常病人安全性。
+115/06/12		1813 [張惟絜]						
+ Seforce 包 400 mg/200 mL	400  mg(1.Bag)	IVD	Q12H	115/06/12 1932	115/06/19 1932	使用中
+醫囑備註: CRRT dose ,仿單：建議單獨管路輸注。<2020/8/16>
+115/06/12		2050 [張芷菱]				
+115/06/13		0856 [蔡承祐]		2031 [張芷菱]
+115/06/14		0904 [蔡承祐]		2035 [黃宇晟]
+115/06/15		0839 [徐裎越]		2100 [黃宇晟]
+115/06/16		0846 [徐裎越]		2033 [林芝妤]
+115/06/17		0854 [陳詩涵]		2100				
+ Tapimycin 針 2.25 g/Vial	4.5  gm(2.Vial)	IVD	Q8H	115/06/12 1932	115/06/19 1932	使用中
+醫囑備註: with pump drip 4 hours(CRRT dose),具中高度腎損傷風險，請注意合併腎毒性藥物、脫水/高齡/腎功能異常病人安全性。
+115/06/12		2040 [張芷菱]				
+115/06/13		0411 [張芷菱]		1232 [蔡承祐]		2031 [張芷菱]
+115/06/14		0403 [張芷菱]		1245 [蔡承祐]		2035 [黃宇晟]
+115/06/15		0406 [黃宇晟]		1201 [徐裎越]		2100 [黃宇晟]
+115/06/16		0419 [黃宇晟]		1323 [徐裎越]		2033 [林芝妤]
+115/06/17		0436 [林芝妤]		1240 [陳詩涵]		2100
+ Keppra 溶液 100 mg/mL 300 mL/Bot	7.5  ml	PO	Q12H	115/06/12 2351	115/07/11 0200	使用中
+醫囑備註: chronic prescription (因為CRRT從5mg->7.5mg)，如果不洗了請改回,腎功能不全：Clcr<30 250~500mg Q12H、HD：500~1000mg Q24H透析後給藥<2019/4/11>。
+115/06/13		0856 [蔡承祐]		2037 [張芷菱]
+115/06/14		0904 [蔡承祐]		2035 [黃宇晟]
+115/06/15		0839 [徐裎越]		2100 [黃宇晟]
+115/06/16		0846 [徐裎越]		2033 [林芝妤]
+115/06/17		0854 [陳詩涵]		2100				
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	Q8H	115/06/13 0538	115/06/14 0642	結束
+醫囑備註: with Rolikan 40ml, run with pump 50 ml/hr
+115/06/13		1232 [蔡承祐]		2228 [張芷菱]
+115/06/14		0647 [張芷菱]				
+ Rolikan 針 7% 20 mL/Amp	40  ml(2.Amp)	IVD	Q8H	115/06/13 0546	115/06/14 0642	結束
+醫囑備註: 40 ml add into normal saline 500ml, run with pump 50ml/hr,本品不建議與其他藥品混合，建議單獨一條管路，易產生沉澱 <2018/12/24>。
+115/06/13		1232 [蔡承祐]		2228 [張芷菱]
+115/06/14		0647 [張芷菱]						
+ 常備 Normal Saline 大塚 包 500mL	500  mL(1.Bag)	IVD	QD	115/06/14 0412	115/07/14 0411	使用中
+醫囑備註: for drug
+115/06/14		0904 [蔡承祐]				
+115/06/15		0839 [徐裎越]				
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ Normal Saline 信東 瓶 500 mL	500  mL(1.Bot)	IVD	QD	115/06/14 0643	115/06/15 0604	結束
+醫囑備註: N/S 500 ml + Rolikan 1 amp run 20 ml/hr
+115/06/14		0904 [蔡承祐]						
+ Rolikan 針 7% 20 mL/Amp	20  ml(1.Amp)	IVD	QD	115/06/14 0643	115/06/15 0604	結束
+醫囑備註: 1 amp in N/S 500 ml,本品不建議與其他藥品混合，建議單獨一條管路，易產生沉澱 <2018/12/24>。
+115/06/14		0904 [蔡承祐]						
+ 低 10 mg Xarelto 錠劑 粉字	0.5  Tab	PO	QDCC	115/06/14 0943	115/07/14 0942	使用中
+115/06/15		0734 [黃宇晟]				
+115/06/16		0639 [黃宇晟]				
+115/06/17		0646 [林芝妤]						
+ Mopride 錠劑 5 mg	1  Tab	PO	TID	115/06/14 1343	115/06/15 1559	結束
+115/06/14		1656 [蔡承祐]				
+115/06/15		0839 [徐裎越]		1201 [徐裎越]				
+ Albu Rx 25 白蛋白 50 mL/Bot	50  mL(1.Bot)	IVD	Q12H	115/06/14 1827	115/06/15 1504	結束
+醫囑備註: 自費6瓶
+115/06/14		2035 [黃宇晟]				
+115/06/15		0839 [徐裎越]						
+ Hydrocortisone 針 100 mg/Vial	50  mg(0.5Vial)	IVD	Q6H	115/06/15 0526	115/06/18 0001	使用中
+115/06/15		1201 [徐裎越]		1622 [徐裎越]		2218 [黃宇晟]
+115/06/16		0419 [黃宇晟]		1323 [徐裎越]		1627 [徐裎越]
+2226 [林芝妤]				
+115/06/17		0436 [林芝妤]		1240 [陳詩涵]		1700
+ Addaven 微量元素 針 10 mL	10  mL(1.Amp)	IVD	QD	115/06/15 0937	115/06/17 0540	結束
+醫囑備註: 1 amp in D5W 500ml run 10ml/hr,成人每日建議量10 mL，開封後冷藏審氏2-8度至多存放24小時，未用完請丟棄不得重複使用 <2019/1/30>。
+115/06/16		0846 [徐裎越]						
+ Lyo-Povigent 針 4 mL【附溶劑】	4  mL	TPN	QD	115/06/15 0937	115/06/17 0543	結束
+醫囑備註: 1 amp in D5W 250ml run 10ml/hr
+115/06/16		0846 [徐裎越]						
+ Thiamine 針 壽元廠 100 mg/2 mL	200  mg(2.Amp)	IV	QD	115/06/15 0937	115/06/17 0940	結束
+115/06/16		0846 [徐裎越]				
+115/06/17		0854 [陳詩涵]						
+ VitaCICOL 維他命C 針 100 mg/2 mL	200  mg(2.Amp)	IVD	Q8H	115/06/15 0937	115/06/22 0937	使用中
+醫囑備註: 2 amp (4ml) in N/S 20ml rapid ivd <10min Q8H,PN建議劑量 100-200 mg/天、重症病人 (尤其是維生素C不足) 可達 2-3 gm/天<2022/10/28>。
+115/06/15		1201 [徐裎越]		2100 [黃宇晟]
+115/06/16		0419 [黃宇晟]		1323 [徐裎越]		2033 [林芝妤]
+115/06/17		0436 [林芝妤]		1240 [陳詩涵]		2100
+ Promeran 針 9.08 mg/2 mL/Amp	9.08  mg(1.Amp)	IVD	Q12H	115/06/15 1611	115/06/22 1611	使用中
+醫囑備註: 本品含 HCl 鹽類劑量為 9.08 mg，不含鹽類為 7.68 mg，約等於 Pulin 一支劑量<2025/5/14>。
+115/06/15		2100 [黃宇晟]				
+115/06/16		0846 [徐裎越]		2033 [林芝妤]
+115/06/17		0854 [陳詩涵]		2100				
+ Bisadyl 肛門栓劑 10 mg	2  Supp	REC	QOD	115/06/15 2151	115/07/15 2150	使用中
+115/06/17		0854 [陳詩涵]						
+ Promostan 針 20 mcg/Vial	20  mcg(1.Vial)	IVD	QD	115/06/17 0201	115/06/20 0201	使用中
+醫囑備註: in N/S 250ml, run 5-10ml/hr (if SBP>100mmHg, run 10ml/hr, if SBP<100mmHg, run 5ml/hr) ,根據仿單，本品不建議使用於孕婦 (FDA懷孕分級C)<2018/11/1>。
+115/06/17		0854 [陳詩涵]						
+ Pantoloc 針 40 mg/Vial	40  mg(1.Vial)	IVD	Q12H	115/06/17 1137	115/06/21 0000	使用中
+醫囑備註: 仿單: 建議以生理食鹽水稀釋，並單獨一條靜脈輸液體管路，稀釋後室溫存放最多24小時<2020/8/13>。
+115/06/17		2100						
+PRN 藥囑	使用劑量	途徑	頻次	生效時間	結束時間	狀態
+ 【M3】BioMYCIN 軟膏 40 g/Tube	1  Tube	TOP	QDPRN	115/06/11 0850	115/06/25 0850	使用中
+醫囑備註: for wound CD,本品開封後不得辦理退藥，請勿退回藥局<2018/8/21>。
+115/06/14		0422 [張芷菱]						
+ Fentanyl 管二 高 0.5 mg/10 mL/Amp	1  mg(2.Amp)	IVD	Q8HPRN	115/06/11 2142	115/06/16 2141	使用中
+醫囑備註: 1mg + N/S 30ml(total 50ml), with pump run 0-5ml/hr as titration, keep CPOT<4,修改流速請直接用【更改備註】功能即可，請勿刪除重開，會重複給藥；不相容：Pantoloc<2021/8/23>。
+115/06/12		2340 [吳佩儒/張芷菱]				
+115/06/13		1914 [蔡承祐/陳嘉芳]				
+115/06/15		1208 [張惟絜/徐裎越]				
+115/06/16		1424 [徐裎越/余婕慈]						
+ Heparin 抗凝血針 25000 IU/Vial	25000  IU(1.Vial)	IVD	QDPRN	115/06/12 1727	115/06/19 1727	使用中
+醫囑備註: CVVH抗凝注射器:Heparin 2500U in N/S 50ml(50U/ml), keep APTT=40-50秒 ,本品為Heparin原液，根據仿單開封後室溫至多保存14天，開封後不得退藥 <2018/1/2>
+115/06/13		2035 [蔡承祐]						
+ Prismasol B0 Solution 5 L/Bag	5000  mL	IRR	Q1HPRN	115/06/12 1727	115/06/19 1727	使用中
+115/06/13		0006 [張芷菱]		0314 [張芷菱]		0418 [張芷菱]
+0725 [張芷菱]		2034 [張芷菱]		2236 [張芷菱]
+115/06/14		0020 [張芷菱]		0141 [張芷菱]		0311 [張芷菱]
+0411 [張芷菱]		0539 [張芷菱]		0648 [張芷菱]
+0752 [張芷菱]		0939 [蔡承祐]		1422 [蔡承祐]
+2009 [蔡承祐]				
+115/06/15		2149 [黃宇晟]						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	20  ml(2.Amp)	IVD	Q6HPRN	115/06/12 1727	115/06/13 2304	使用中
+醫囑備註: 本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/12		2038 [張芷菱]				
+115/06/13		0314 [張芷菱]		0554 [張芷菱]		0725 [張芷菱]
+2034 [張芷菱]						
+ NovoRapid 胰島素筆 橘	1  IU(0.0033Pen)	SC	Q6HPRN	115/06/12 2229	115/06/26 2229	使用中
+醫囑備註: for Insulin scale ,出院帶藥開立筆針頭請勿以材料開，請以藥品輸入PEN NEEDLE開立<2019/2/1>。
+115/06/12		2220 [張芷菱]						
+ 【f1】KCl 20 mEq 氯化鉀 10 mL	30  ml(3.Amp)	IVD	Q6HPRN	115/06/13 2305	115/06/23 2305	使用中
+醫囑備註: for CVVH,本品為高濃度 KCl，僅保留特殊醫療使用，院內有已稀釋 KCl 劑型 (10mEq、20mEq) 可供臨床使用。<2026/6/3>
+115/06/13		2308 [張芷菱]				
+115/06/14		0141 [張芷菱]		0311 [張芷菱]		0411 [張芷菱]
+0539 [張芷菱]				
+115/06/15		2149 [黃宇晟]
+`;
+
+    const demoPatientRawText = `SICU - 01 (女) 75歲 003467607I
+主治醫師：李國鈞`;
+
+    const demoVitalsRawText = `Vital Signs [2026/06/17 09:20]耳溫：36.8 ℃、ABP：132/58(78) mmHg、脈搏：78 次/分、呼吸：18 次/分、SPO2：98 %。
+BW/圍長 [2026/06/15 04:30]體重：45.3 Kg。
+昏迷指標 [2026/06/17 08:00]昏迷指標：E4 V5 M6。`;
+
+    const demoLabsRawText = `DATE	TIME	SPECIMEN	Na	K	Cr
+115/06/15	0800	Blood	138	4.2	0.75
+115/06/16	0800	Blood	139	3.9	0.78
+115/06/17	0800	Blood	137	4.1	0.74`;
+
+    const demoTubesRawText = `插管日期 時間 管路種類 備註 拔除日期 時間
+115/05/28 1130 Foley N/A N/A N/A`;
+
+    const demoCultureRawText = `採檢時間：115/06/15 檢體：Sputum 培養結果：Stenotrophomonas maltophilia`;
+
+    const demoAntibioticsRawText = `Levofloxacin 750 mg PO QOD (6/16~)`;
+    const demoSuggestionsRawText = `1. Continue Levofloxacin 750 mg PO QOD for Stenotrophomonas maltophilia.
+2. Monitor blood glucose closely and adjust insulin dose as needed.
+3. Check serum potassium and creatinine regularly.`;
+
+    // =========================================================================
+    // 2. DOCUMENT READY & SETUP
+    // =========================================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      // Load Custom Mapping from LocalStorage
+      const savedMappers = localStorage.getItem('drugMappings_v5');
+      let loaded = false;
+      if (savedMappers) {
+        try {
+          drugMappings = JSON.parse(savedMappers);
+          if (drugMappings && typeof drugMappings === 'object') {
+            loaded = true;
+          }
+        } catch (e) {
+          console.error("Error parsing saved drug mappings:", e);
+        }
+      }
+      if (loaded) {
+        // Merge missing default mappings
+        let updated = false;
+        for (const key in defaultDrugMappings) {
+          if (!drugMappings[key]) {
+            drugMappings[key] = defaultDrugMappings[key];
+            updated = true;
+          }
+        }
+        if (updated) {
+          localStorage.setItem('drugMappings_v5', JSON.stringify(drugMappings));
+        }
+      } else {
+        drugMappings = { ...defaultDrugMappings };
+        localStorage.setItem('drugMappings_v5', JSON.stringify(drugMappings));
+      }
+
+      // Initialize Theme
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+
+      // Preload Demo Data
+      preloadDemoData();
+
+      // Bind Event Listeners
+      setupEventListeners();
+
+      // Initial Render
+      triggerAutorender();
+    });
+
+    function preloadDemoData() {
+      document.getElementById('inputMeds').value = demoMedicationRawText;
+    }
+
+    function setupEventListeners() {
+      // Theme Toggle
+      document.getElementById('btnThemeToggle').addEventListener('click', () => {
+        const curr = document.documentElement.getAttribute('data-theme');
+        const next = curr === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+      });
+
+      // Full Screen Toggle
+      document.getElementById('btnFullScreenToggle').addEventListener('click', (e) => {
+        const layout = document.getElementById('gridLayout');
+        layout.classList.toggle('full-screen');
+        if (layout.classList.contains('full-screen')) {
+          e.target.textContent = "👁️ 顯示輸入欄";
+        } else {
+          e.target.textContent = "🖥️ 滿版顯示";
+        }
+        // Force gantt redraw since viewport width changed
+        setTimeout(renderGantt, 100);
+      });
+
+      // Clear All
+      document.getElementById('btnClearAll').addEventListener('click', () => {
+        if(confirm("確定要清空輸入框嗎？")) {
+          document.getElementById('inputMeds').value = '';
+          triggerAutorender();
+          showToast("🧹 已清空輸入");
+        }
+      });
+
+      // Trigger redraw on inputs
+      const inputIds = ['inputMeds'];
+      inputIds.forEach(id => {
+        document.getElementById(id).addEventListener('input', triggerAutorender);
+      });
+
+      // Modals
+      const detailsModal = document.getElementById('detailsModal');
+      const dbModal = document.getElementById('dbModal');
+
+      document.getElementById('btnModalClose').onclick = () => detailsModal.classList.remove('open');
+      document.getElementById('btnModalCloseFooter').onclick = () => detailsModal.classList.remove('open');
+      
+      document.getElementById('btnDatabaseManager').onclick = () => {
+        dbModal.classList.add('open');
+        updateDbTable();
+      };
+      document.getElementById('btnDbModalClose').onclick = () => dbModal.classList.remove('open');
+      document.getElementById('btnDbModalCloseFooter').onclick = () => dbModal.classList.remove('open');
+
+      window.onclick = (e) => {
+        if (e.target === detailsModal) detailsModal.classList.remove('open');
+        if (e.target === dbModal) dbModal.classList.remove('open');
+      };
+
+      // Custom DB Save
+      document.getElementById('btnSaveDbItem').onclick = () => {
+        const brand = document.getElementById('addDbBrand').value.trim();
+        const generic = document.getElementById('addDbGeneric').value.trim();
+        const category = document.getElementById('addDbCategory').value.trim();
+
+        if (brand && generic && category) {
+          drugMappings[brand] = { generic, category };
+          localStorage.setItem('drugMappings_v5', JSON.stringify(drugMappings));
+          document.getElementById('addDbBrand').value = '';
+          document.getElementById('addDbGeneric').value = '';
+          document.getElementById('addDbCategory').value = '';
+          updateDbTable();
+          triggerAutorender();
+          showToast("💾 藥物已儲存");
+        } else {
+          alert("請填寫商品名關鍵字、學名與藥理分類！");
+        }
+      };
+
+      // Reset DB
+      document.getElementById('btnResetDb').onclick = () => {
+        if(confirm("確定要將藥物字典重設回預設值嗎？自訂的對應將被覆蓋。")) {
+          drugMappings = { ...defaultDrugMappings };
+          localStorage.setItem('drugMappings_v5', JSON.stringify(drugMappings));
+          updateDbTable();
+          triggerAutorender();
+          showToast("🔄 資料庫已重設");
+        }
+      };
+
+      // Search DB
+      document.getElementById('searchDbInput').oninput = (e) => {
+        updateDbTable(e.target.value.trim());
+      };
+
+      // Gantt filters event bindings
+      document.getElementById('filterSearch').addEventListener('input', renderGantt);
+      document.getElementById('filterCategory').addEventListener('change', renderGantt);
+      document.getElementById('filterType').addEventListener('change', renderGantt);
+      document.getElementById('filterStartDate').addEventListener('change', updateTimelineBounds);
+      document.getElementById('filterEndDate').addEventListener('change', updateTimelineBounds);
+
+      document.getElementById('btnResetFilters').onclick = () => {
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterCategory').value = 'all';
+        document.getElementById('filterType').value = 'all';
+        
+        // Reset to original parsed default timeline
+        if (parsedOrders.length > 0) {
+          const defaultBounds = calculateDefaultTimelineBounds(parsedOrders);
+          document.getElementById('filterStartDate').value = toDateISO(defaultBounds.start);
+          document.getElementById('filterEndDate').value = toDateISO(defaultBounds.end);
+          activeTimelineStart = defaultBounds.start.getTime();
+          activeTimelineEnd = defaultBounds.end.getTime();
+        }
+        renderGantt();
+        renderLogTable();
+      };
+    }
+
+    // =========================================================================
+    // 3. TOAST MESSAGES
+    // =========================================================================
+    function showToast(msg) {
+      const toast = document.getElementById('toastMessage');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // =========================================================================
+    // 4. AUTORENDER ENGINE
+    // =========================================================================
+    let renderTimeout;
+    function triggerAutorender() {
+      clearTimeout(renderTimeout);
+      renderTimeout = setTimeout(generateReportAndDrawGantt, 250);
+    }
+
+    function generateReportAndDrawGantt() {
+      // 1. Get raw input
+      const rawMeds = document.getElementById('inputMeds').value;
+
+      // 2. Parse Medication Orders and Administration logs
+      parsedOrders = parseMedicationOrdersAndLogs(rawMeds);
+      
+      // Determine default timeline range based on parsed data
+      if (parsedOrders.length > 0 && !document.getElementById('filterStartDate').value) {
+        const bounds = calculateDefaultTimelineBounds(parsedOrders);
+        document.getElementById('filterStartDate').value = toDateISO(bounds.start);
+        document.getElementById('filterEndDate').value = toDateISO(bounds.end);
+        activeTimelineStart = bounds.start.getTime();
+        activeTimelineEnd = bounds.end.getTime();
+      }
+
+      // Map categories and generics, populating Category filter dropdown
+      updateCategoryFilterOptions(parsedOrders);
+      
+      // Render Gantt Chart & stats dashboard & log table
+      renderGantt();
+      renderLogTable();
+    }
+
+    // =========================================================================
+    // 6. CLINICAL SPECIFIC PARSERS (Meds, Patient, Labs, Vitals, Tubes, Cultures)
+    // =========================================================================
+    
+    // Parse Minguo format date string (e.g. 115/05/28 0850)
+    function parseMinguoDate(str) {
+      if (!str) return null;
+      str = str.trim();
+      const regex = /^(\d{2,3})\/(\d{2})\/(\d{2})(?:\s+(\d{2}):?(\d{2}))?/;
+      const match = str.match(regex);
+      if (!match) return null;
+      
+      const rocYear = parseInt(match[1]);
+      const year = rocYear + 1911;
+      const month = parseInt(match[2]) - 1;
+      const day = parseInt(match[3]);
+      const hour = match[4] ? parseInt(match[4]) : 0;
+      const min = match[5] ? parseInt(match[5]) : 0;
+      
+      return new Date(year, month, day, hour, min);
+    }
+
+    function toLocalISOString(date) {
+      if (!date) return "";
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const h = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      return `${y}-${m}-${d}T${h}:${min}:00`;
+    }
+
+    function toDateISO(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // Master Medication & Log Parser
+    function parseMedicationOrdersAndLogs(text) {
+      if (!text.trim()) return [];
+
+      const lines = text.split('\n');
+      let currentSection = "常規";
+      let currentOrder = null;
+      const orders = [];
+
+      let currentDate = null;
+      let lastTime = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Section headers
+        if (line.includes("臨時藥囑")) {
+          currentSection = "臨時";
+          currentOrder = null;
+          continue;
+        } else if (line.includes("常規藥囑")) {
+          currentSection = "常規";
+          currentOrder = null;
+          continue;
+        } else if (line.includes("PRN 藥囑")) {
+          currentSection = "PRN";
+          currentOrder = null;
+          continue;
+        }
+
+        if (trimmed.includes("使用劑量") && trimmed.includes("途徑") && trimmed.includes("生效時間")) {
+          continue;
+        }
+
+        // New order line (starts with a space/tab and has tabs)
+        if (line.startsWith(' ') || line.startsWith('\t')) {
+          const parts = line.split('\t').map(p => p.trim());
+          if (parts.length >= 6) {
+            const rawName = parts[0];
+            const dose = parts[1] || '';
+            const route = parts[2] || '';
+            const freq = parts[3] || '';
+            const startStr = parts[4] || '';
+            const endStr = parts[5] || '';
+            const status = parts[6] || '使用中';
+
+            if (rawName && startStr) {
+              const start = parseMinguoDate(startStr);
+              // Default end date is 1 day after start if missing or invalid
+              const end = parseMinguoDate(endStr) || new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+              currentDate = null;
+              lastTime = null;
+
+              // Find Generic & Category from database
+              let generic = rawName;
+              let category = "其他 (Others)";
+              for (const key in drugMappings) {
+                if (rawName.toLowerCase().includes(key.toLowerCase())) {
+                  generic = drugMappings[key].generic;
+                  category = drugMappings[key].category;
+                  break;
+                }
+              }
+
+              currentOrder = {
+                id: orders.length + 1,
+                brandName: rawName,
+                genericName: generic,
+                category: category,
+                dose: dose,
+                route: route,
+                freq: freq,
+                type: currentSection,
+                status: status,
+                remark: "",
+                start: toLocalISOString(start),
+                end: toLocalISOString(end),
+                admins: []
+              };
+              orders.push(currentOrder);
+              continue;
+            }
+          }
+        }
+
+        // Remarks
+        if (trimmed.startsWith("醫囑備註:")) {
+          if (currentOrder) {
+            currentOrder.remark = trimmed.substring("醫囑備註:".length).trim();
+          }
+          continue;
+        }
+
+        // Nurse administration log line
+        if (currentOrder) {
+          const parts = line.split('\t');
+          const dateMatch = parts[0].trim().match(/^(\d{2,3})\/(\d{2})\/(\d{2})/);
+          let lineDate = null;
+          if (dateMatch) {
+            const rocYear = parseInt(dateMatch[1]);
+            const year = rocYear + 1911;
+            const month = parseInt(dateMatch[2]) - 1;
+            const day = parseInt(dateMatch[3]);
+            lineDate = new Date(year, month, day);
+            currentDate = lineDate;
+            lastTime = null; // reset wrapping comparator
+          }
+
+          const cells = dateMatch ? parts.slice(1) : parts;
+          cells.forEach(cell => {
+            cell = cell.trim();
+            if (!cell) return;
+
+            // Match time (4 digits), optional nurse in brackets, and optional "not given" label
+            // E.g. "1613 [黃宇晟] 未給:已停用" or "0101 [盧巧淇] ＊" or "1700"
+            const match = cell.match(/^(\d{4})(?:\s+\[([^\]]+)\])?(?:\s+(未給:[^\t\n\r]*))?/);
+            if (match) {
+              const hhmm = match[1];
+              const nurse = match[2] || "未簽核";
+              const omitted = match[3] || null;
+
+              const hour = parseInt(hhmm.substring(0, 2));
+              const min = parseInt(hhmm.substring(2, 4));
+
+              // Handle date wrapping across midnight
+              if (!dateMatch && currentDate && lastTime) {
+                const thisTimeVal = hour * 100 + min;
+                const lastTimeVal = parseInt(lastTime.substring(0, 2)) * 100 + parseInt(lastTime.substring(2, 4));
+                if (thisTimeVal < lastTimeVal) {
+                  currentDate.setDate(currentDate.getDate() + 1);
+                }
+              }
+
+              if (currentDate) {
+                const adminDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, min);
+                currentOrder.admins.push({
+                  time: toLocalISOString(adminDate),
+                  nurse: nurse,
+                  omitted: omitted
+                });
+                lastTime = hhmm;
+              }
+            }
+          });
+        }
+      }
+
+      return orders;
+    }
+
+    // Determine default timeline boundaries based on actual administrations
+    function calculateDefaultTimelineBounds(orders) {
+      let times = [];
+      orders.forEach(o => {
+        o.admins.forEach(a => {
+          const t = new Date(a.time).getTime();
+          if (!isNaN(t)) times.push(t);
+        });
+      });
+
+      let start = new Date();
+      let end = new Date();
+      if (times.length > 0) {
+        const minT = Math.min(...times);
+        const maxT = Math.max(...times);
+
+        start = new Date(minT);
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(maxT);
+        end.setHours(23, 59, 59, 999);
+      } else if (orders.length > 0) {
+        // Fallback to order start times
+        const starts = orders.map(o => new Date(o.start).getTime()).filter(t => !isNaN(t));
+        if (starts.length > 0) {
+          const minS = Math.min(...starts);
+          start = new Date(minS);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(minS + 2 * 24 * 60 * 60 * 1000); // 2 days
+          end.setHours(23, 59, 59, 999);
+        }
+      }
+      return { start, end };
+    }
+
+    // Dynamic categories loader
+    function updateCategoryFilterOptions(orders) {
+      const select = document.getElementById('filterCategory');
+      // Keep "all" option
+      select.innerHTML = '<option value="all">全部類別</option>';
+
+      const categoriesInMeds = new Set();
+      orders.forEach(o => categoriesInMeds.add(o.category));
+
+      const sortedCats = Array.from(categoriesInMeds).sort();
+      sortedCats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      });
+    }
+
+
+
+    // =========================================================================
+    // 7. GANTT RENDERER
+    // =========================================================================
+    function updateTimelineBounds() {
+      const startVal = document.getElementById('filterStartDate').value;
+      const endVal = document.getElementById('filterEndDate').value;
+
+      if (startVal && endVal) {
+        const s = new Date(startVal + "T00:00:00").getTime();
+        const e = new Date(endVal + "T23:59:59").getTime();
+        if (s <= e) {
+          activeTimelineStart = s;
+          activeTimelineEnd = e;
+          renderGantt();
+          renderLogTable();
+        } else {
+          document.getElementById('filterEndDate').value = startVal;
+          activeTimelineStart = s;
+          activeTimelineEnd = new Date(startVal + "T23:59:59").getTime();
+          renderGantt();
+          renderLogTable();
+        }
+      }
+    }
+
+    // Calculate position in the active timeline bounds (0-100%)
+    function getTimelinePosition(dateString) {
+      const time = new Date(dateString).getTime();
+      const totalDur = activeTimelineEnd - activeTimelineStart;
+      if (time < activeTimelineStart) return 0;
+      if (time > activeTimelineEnd) return 100;
+      return ((time - activeTimelineStart) / totalDur) * 100;
+    }
+
+    // Render Timeline Header Days and hour ticks
+    function renderTimelineHeaderLabels() {
+      const container = document.getElementById('ganttTimelineHeader');
+      container.innerHTML = '';
+
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      const daysCount = Math.round((activeTimelineEnd - activeTimelineStart) / oneDayMs);
+
+      if (daysCount > 1) {
+        container.style.gridTemplateColumns = `repeat(${daysCount}, 1fr)`;
+        for (let t = activeTimelineStart; t <= activeTimelineEnd; t += oneDayMs) {
+          const dateObj = new Date(t);
+          const dayOfWeek = ["日", "一", "二", "三", "四", "五", "六"][dateObj.getDay()];
+          const label = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')} (${dayOfWeek})`;
+          const year = `${dateObj.getFullYear() - 1911}年`;
+
+          const div = document.createElement('div');
+          div.className = 'gantt-day-header';
+          div.innerHTML = `
+            <div class="day-title">${label}</div>
+            <div class="day-sub">${year}</div>
+            <div class="hour-ticks"><span>00</span><span>06</span><span>12</span><span>18</span></div>
+          `;
+          container.appendChild(div);
+        }
+      } else {
+        container.style.gridTemplateColumns = 'repeat(6, 1fr)';
+        const dateObj = new Date(activeTimelineStart);
+        const label = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')}`;
+        const shifts = ["00-04h", "04-08h", "08-12h", "12-16h", "16-20h", "20-24h"];
+        
+        shifts.forEach((shift, idx) => {
+          const div = document.createElement('div');
+          div.className = 'gantt-day-header';
+          div.innerHTML = `
+            <div class="day-title">${shift}</div>
+            <div class="day-sub">${label}</div>
+            <div class="hour-ticks">
+              <span>${idx*4}h</span>
+              <span>${idx*4+2}h</span>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      }
+    }
+
+    function renderGantt() {
+      // Draw Timeline header ticks first
+      renderTimelineHeaderLabels();
+
+      const ganttRows = document.getElementById('ganttRows');
+      ganttRows.innerHTML = '';
+
+      // Get filter values
+      const query = document.getElementById('filterSearch').value.toLowerCase().trim();
+      const category = document.getElementById('filterCategory').value;
+      const type = document.getElementById('filterType').value;
+
+      // Filter parsed orders
+      const filtered = parsedOrders.filter(ord => {
+        const matchSearch = ord.genericName.toLowerCase().includes(query) || ord.brandName.toLowerCase().includes(query);
+        const matchCat = category === 'all' || ord.category === category;
+        const matchType = type === 'all' || ord.type === type;
+        
+        // Time filter: order active window must overlap with selected window OR must have administration logs within the window
+        const ordStart = new Date(ord.start).getTime();
+        const ordEnd = new Date(ord.end).getTime();
+        const overlaps = (ordStart < activeTimelineEnd && ordEnd > activeTimelineStart);
+        
+        const hasAdminsInWindow = ord.admins.some(a => {
+          const at = new Date(a.time).getTime();
+          return (at >= activeTimelineStart && at <= activeTimelineEnd);
+        });
+
+        return matchSearch && matchCat && matchType && (overlaps || hasAdminsInWindow);
+      });
+
+      // Update stats dashboard
+      renderStatsDashboard(filtered);
+
+      if (filtered.length === 0) {
+        ganttRows.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">無符合篩選條件的用藥紀錄。</div>';
+        return;
+      }
+
+      // Group by category
+      const grouped = {};
+      categoryOrder.forEach(cat => grouped[cat] = []);
+      filtered.forEach(o => {
+        const cat = grouped[o.category] ? o.category : "其他 (Others)";
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(o);
+      });
+
+      // Calculate grid size background for rows
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      const daysCount = Math.round((activeTimelineEnd - activeTimelineStart) / oneDayMs);
+      let bgSize;
+      if (daysCount > 1) {
+        const dayPct = (100 / daysCount).toFixed(4);
+        const tickPct = (100 / (daysCount * 4)).toFixed(4);
+        bgSize = `${dayPct}% 100%, ${tickPct}% 100%`;
+      } else {
+        bgSize = '16.666% 100%, 4.166% 100%';
+      }
+
+      // Render rows by category order
+      categoryOrder.forEach(cat => {
+        const list = grouped[cat];
+        if (!list || list.length === 0) return;
+
+        // Sort same drugs together (primarily by generic name, secondarily by start time)
+        list.sort((a, b) => {
+          const nameA = a.genericName.toLowerCase();
+          const nameB = b.genericName.toLowerCase();
+          if (nameA < nameB) return -1;
+          if (nameA > nameB) return 1;
+          return new Date(a.start) - new Date(b.start);
+        });
+
+        // Group list by: genericName, dose, normalized freq, route, type
+        const mergedList = [];
+        const groups = {};
+
+        function normalizeFreq(f) {
+          if (!f) return '';
+          const idx = f.indexOf('領藥號');
+          if (idx !== -1) return f.substring(0, idx).trim();
+          return f.trim();
+        }
+
+        list.forEach(ord => {
+          const normFreq = normalizeFreq(ord.freq);
+          const key = `${ord.genericName}||${ord.dose}||${normFreq}||${ord.route}||${ord.type}`;
+          
+          if (!groups[key]) {
+            groups[key] = {
+              id: ord.id,
+              brandName: ord.brandName,
+              genericName: ord.genericName,
+              category: ord.category,
+              dose: ord.dose,
+              route: ord.route,
+              freq: ord.freq,
+              type: ord.type,
+              status: ord.status,
+              remark: ord.remark || '',
+              start: ord.start,
+              end: ord.end,
+              admins: [...ord.admins],
+              orders: [ord]
+            };
+            mergedList.push(groups[key]);
+          } else {
+            const g = groups[key];
+            g.admins.push(...ord.admins);
+            if (new Date(ord.start) < new Date(g.start)) g.start = ord.start;
+            if (new Date(ord.end) > new Date(g.end)) g.end = ord.end;
+            if (ord.status === '使用中') g.status = '使用中';
+            if (ord.remark && g.remark.indexOf(ord.remark) === -1) {
+              g.remark = g.remark ? (g.remark + "\n" + ord.remark) : ord.remark;
+            }
+            g.orders.push(ord);
+          }
+        });
+
+        // Render Category Header Row
+        const catRow = document.createElement('div');
+        catRow.className = 'gantt-category-row';
+        catRow.innerHTML = `📁 ${cat} <span class="category-badge">${mergedList.length} 列 / ${list.length} 筆醫囑</span>`;
+        ganttRows.appendChild(catRow);
+
+        // Render Med Rows
+        mergedList.forEach(g => {
+          const badgeType = g.type === '常規' ? 'badge-reg' : (g.type === '臨時' ? 'badge-stat' : 'badge-prn');
+          const badgeStatus = g.status === '使用中' ? 'badge-active' : 'badge-ended';
+          
+          // Tooltip for the details cell: Generic Name + Combined Remarks
+          const cellTooltip = `${g.genericName}${g.remark ? '\n\n【醫囑備註】\n' + g.remark : ''}`;
+
+          const row = document.createElement('div');
+          row.className = 'gantt-row';
+          row.innerHTML = `
+            <div class="drug-details-cell" title="${cellTooltip}">
+              <span class="primary-name" onclick="showMedDetails(${g.id})" style="font-size: 0.82rem; line-height: 1.2; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${g.genericName}</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; overflow: hidden;">
+                <span class="secondary-name" style="flex: 1; min-width: 0; font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" title="${g.brandName} (${g.dose})">${g.brandName} (${g.dose})</span>
+                <div style="display: flex; gap: 2px; flex-shrink: 0; align-items: center;">
+                  <span class="badge ${badgeType}" style="font-size: 0.58rem; padding: 0px 3px; border-radius: 2px;">${g.type}</span>
+                  <span class="badge badge-route" style="font-size: 0.58rem; padding: 0px 3px; border-radius: 2px;">${g.route}</span>
+                  <span class="badge ${badgeStatus}" style="font-size: 0.58rem; padding: 0px 3px; border-radius: 2px;">${g.status}</span>
+                  <span class="badge" style="font-size: 0.58rem; padding: 0px 3px; border-radius: 2px; background-color:rgba(255,255,255,0.04); color:var(--text-muted); border:1px solid var(--border-color);">${formatFreqForDisplay(g.freq, g.dose)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-cell" id="cell-${g.id}" style="background-size: ${bgSize};">
+              <!-- Active bars for all orders in the group -->
+              ${g.orders.map(o => {
+                const startPos = getTimelinePosition(o.start);
+                const endPos = getTimelinePosition(o.end);
+                const barWidth = Math.max(0.6, endPos - startPos);
+                
+                const ordStartT = new Date(o.start).getTime();
+                const ordEndT = new Date(o.end).getTime();
+                const overlapsWindow = (ordStartT < activeTimelineEnd && ordEndT > activeTimelineStart);
+                if (!overlapsWindow) return '';
+
+                const typeClass = o.type === '常規' ? 'order-bar-reg' : (o.type === '臨時' ? 'order-bar-stat' : 'order-bar-prn');
+                const endedClass = o.status === '結束' ? 'order-bar-ended' : '';
+                const barTooltip = `醫囑期: ${formatTime(o.start)} ~ ${formatTime(o.end)}\n劑量: ${o.dose}${o.remark ? '\n備註: ' + o.remark : ''}`;
+                
+                return `
+                  <div class="order-bar ${typeClass} ${endedClass}" 
+                       style="left: ${startPos}%; width: ${barWidth}%;"
+                       onclick="showMedDetails(${o.id})"
+                       title="${barTooltip}">
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+          ganttRows.appendChild(row);
+
+          // Render administration dots
+          const cellEl = document.getElementById(`cell-${g.id}`);
+          g.admins.forEach(admin => {
+            const at = new Date(admin.time).getTime();
+            if (at >= activeTimelineStart && at <= activeTimelineEnd) {
+              const pos = getTimelinePosition(admin.time);
+              const dot = document.createElement('div');
+              dot.className = 'admin-dot';
+              dot.style.left = `${pos}%`;
+
+              if (admin.omitted) {
+                dot.classList.add('omitted');
+                dot.textContent = '✕';
+                dot.title = `[未給藥] 簽核時間: ${formatTime(admin.time)} [${admin.nurse}] (${admin.omitted}) - 劑量: ${g.dose}`;
+              } else {
+                dot.title = `給藥簽核: ${formatTime(admin.time)} [${admin.nurse}] - 劑量: ${g.dose}`;
+              }
+
+              const matchingOrder = g.orders.find(o => o.admins.some(a => a.time === admin.time && a.nurse === admin.nurse)) || g;
+              dot.onclick = (e) => {
+                e.stopPropagation();
+                showMedDetails(matchingOrder.id);
+              };
+              cellEl.appendChild(dot);
+            }
+          });
+        });
+      });
+    }
+
+    // Render stats blocks
+    function renderStatsDashboard(meds) {
+      const container = document.getElementById('statsDashboard');
+      
+      const total = meds.length;
+      const active = meds.filter(m => m.status === '使用中').length;
+      const adminsCount = meds.reduce((sum, m) => sum + m.admins.filter(a => !a.omitted).length, 0);
+      const omittedCount = meds.reduce((sum, m) => sum + m.admins.filter(a => a.omitted).length, 0);
+      const prnStatCount = meds.filter(m => m.type === 'PRN' || m.type === '臨時').length;
+
+      container.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color:rgba(99, 102, 241, 0.12); color:#818cf8;">💊</div>
+          <div>
+            <div class="stat-val">${active} / ${total}</div>
+            <div class="stat-lbl">使用中 / 總醫囑數</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color:rgba(16, 185, 129, 0.12); color:#34d399;">✔️</div>
+          <div>
+            <div class="stat-val">${adminsCount} 次</div>
+            <div class="stat-lbl">完成給藥簽核次數</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color:rgba(239, 68, 68, 0.12); color:#ef4444;">✕</div>
+          <div>
+            <div class="stat-val" style="color:var(--danger);">${omittedCount} 次</div>
+            <div class="stat-lbl">暫緩/未給藥簽核次數</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background-color:rgba(245, 158, 11, 0.12); color:#fbbf24;">⚡</div>
+          <div>
+            <div class="stat-val">${prnStatCount} 筆</div>
+            <div class="stat-lbl">臨時 / PRN 醫囑數</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Render administration log table
+    function renderLogTable() {
+      const tbody = document.getElementById('logTableBody');
+      tbody.innerHTML = '';
+
+      const list = [];
+      parsedOrders.forEach(o => {
+        o.admins.forEach(a => {
+          const at = new Date(a.time).getTime();
+          if (at >= activeTimelineStart && at <= activeTimelineEnd) {
+            list.push({
+              genericName: o.genericName,
+              route: o.route,
+              dose: o.dose,
+              type: o.type,
+              time: a.time,
+              nurse: a.nurse,
+              omitted: a.omitted
+            });
+          }
+        });
+      });
+
+      list.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">此時間內無給藥執行紀錄。</td></tr>';
+        return;
+      }
+
+      list.forEach(item => {
+        const tr = document.createElement('tr');
+        const badgeType = item.type === '常規' ? 'badge-reg' : (item.type === '臨時' ? 'badge-stat' : 'badge-prn');
+        
+        let statusBadge = `<span class="badge badge-active">已給藥</span>`;
+        if (item.omitted) {
+          statusBadge = `<span class="badge" style="background-color:rgba(239,68,68,0.15); color:var(--danger);">${item.omitted}</span>`;
+        }
+
+        tr.innerHTML = `
+          <td style="font-weight:600; font-family:monospace;">${formatTime(item.time)}</td>
+          <td style="font-weight:700; color:var(--accent-secondary);">${item.genericName}</td>
+          <td><span class="badge badge-route">${item.route}</span></td>
+          <td>${item.dose}</td>
+          <td><span class="badge ${badgeType}">${item.type}</span></td>
+          <td>${statusBadge}</td>
+          <td><span class="nurse-tag">[${item.nurse}]</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // =========================================================================
+    // 8. MODAL POPUPS (Detailed details & Dict manager)
+    // =========================================================================
+    function showMedDetails(id) {
+      const ord = parsedOrders.find(o => o.id === id);
+      if (!ord) return;
+
+      document.getElementById('modalGenericName').textContent = ord.genericName;
+      document.getElementById('modalCategory').innerHTML = `<span class="badge badge-reg" style="font-size:0.8rem; padding: 2px 8px;">${ord.category}</span>`;
+      document.getElementById('modalBrandName').textContent = ord.brandName;
+      document.getElementById('modalRoute').textContent = ord.route;
+      document.getElementById('modalDose').textContent = ord.dose;
+      document.getElementById('modalFreq').textContent = formatFreqForDisplay(ord.freq, ord.dose);
+      document.getElementById('modalType').textContent = ord.type;
+      document.getElementById('modalDuration').textContent = `${formatTime(ord.start)} ~ ${formatTime(ord.end)}`;
+      document.getElementById('modalStatus').innerHTML = `<span class="badge ${ord.status === '使用中' ? 'badge-active' : 'badge-ended'}">${ord.status}</span>`;
+      document.getElementById('modalRemark').textContent = ord.remark || "無備註說明";
+      document.getElementById('modalAdminCount').textContent = ord.admins.length;
+
+      const listEl = document.getElementById('modalAdminList');
+      listEl.innerHTML = '';
+
+      if (ord.admins.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.8rem;">目前無實際給藥簽核紀錄。</div>';
+      } else {
+        ord.admins.forEach(a => {
+          const item = document.createElement('div');
+          item.className = 'admin-history-item';
+          
+          if (a.omitted) {
+            item.classList.add('omitted-item');
+            item.innerHTML = `
+              <span>⏱️ ${formatTime(a.time)}</span>
+              <span class="status-label status-held">${a.omitted} (${ord.dose})</span>
+              <span class="nurse-tag">護理師: [${a.nurse}]</span>
+            `;
+          } else {
+            item.innerHTML = `
+              <span>⏱️ ${formatTime(a.time)}</span>
+              <span class="status-label status-given">已給藥 (${ord.dose})</span>
+              <span class="nurse-tag">護理師: [${a.nurse}]</span>
+            `;
+          }
+          listEl.appendChild(item);
+        });
+      }
+
+      document.getElementById('detailsModal').classList.add('open');
+    }
+
+    // Update custom database manager table view
+    function updateDbTable(q = '') {
+      const tbody = document.getElementById('dbTableBody');
+      tbody.innerHTML = '';
+
+      const keys = Object.keys(drugMappings).sort();
+      keys.forEach(k => {
+        const drug = drugMappings[k];
+        if (q) {
+          const lowerQ = q.toLowerCase();
+          const matchKey = k.toLowerCase().includes(lowerQ);
+          const matchGen = drug.generic.toLowerCase().includes(lowerQ);
+          const matchCat = drug.category.toLowerCase().includes(lowerQ);
+          if (!matchKey && !matchGen && !matchCat) return;
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:700;">${k}</td>
+          <td style="color:var(--accent-secondary); font-weight:600;">${drug.generic}</td>
+          <td><span class="badge badge-reg">${drug.category}</span></td>
+          <td><button class="btn-secondary" style="color:var(--danger); border-color:transparent; font-size:0.75rem; padding:2px 6px;" data-key="${k}">刪除</button></td>
+        `;
+
+        tr.querySelector('button').onclick = (e) => {
+          const targetKey = e.target.getAttribute('data-key');
+          if (confirm(`確認要刪除對應關係「${targetKey}」嗎？`)) {
+            delete drugMappings[targetKey];
+            localStorage.setItem('drugMappings_v5', JSON.stringify(drugMappings));
+            updateDbTable(document.getElementById('searchDbInput').value.trim());
+            triggerAutorender();
+            showToast("🗑️ 對應已刪除");
+          }
+        };
+
+        tbody.appendChild(tr);
+      });
+
+      if (tbody.children.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">字典中查無此對應資料。</td></tr>';
+      }
+    }
+
+    // =========================================================================
+    // 9. HELPERS / RENDER TO PREVIEW (HTML note formatting)
+    // =========================================================================
+    function formatFreqForDisplay(freq, dose) {
+      if (!freq) return "";
+      let cleanFreq = freq;
+      if (freq.toUpperCase().includes("STAT")) {
+        cleanFreq = freq.replace(/領藥號\s*:\s*\d+/g, '').replace(/領藥號/g, '').trim();
+      }
+      const cleanDose = dose ? dose.replace(/\s+/g, ' ').trim() : '';
+      return cleanDose ? `${cleanFreq} (${cleanDose})` : cleanFreq;
+    }
+
+    function formatTime(isoString) {
+      if (!isoString) return "";
+      const d = new Date(isoString);
+      const rocY = d.getFullYear() - 1911;
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${rocY}/${m}/${day} ${h}:${min}`;
+    }
+
+    function formatDateString(dateStr) {
+      if (!dateStr) return "";
+      const cleaned = dateStr.replace(/\//g, '');
+      if (cleaned.length === 8) {
+        const m = parseInt(cleaned.substring(4, 6), 10);
+        const d = parseInt(cleaned.substring(6, 8), 10);
+        return `${m}/${d}`;
+      }
+      const tokens = dateStr.split('/');
+      if (tokens.length === 3) {
+        return `${parseInt(tokens[1], 10)}/${parseInt(tokens[2], 10)}`;
+      }
+      return dateStr;
+    }
+
+
+  </script>
+</body>
+</html>
