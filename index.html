@@ -1000,6 +1000,81 @@
       transform: translateY(0);
       opacity: 1;
     }
+
+    /* Dropdown Styles for Export Button */
+    .dropdown-content a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    .dropdown-content a:hover {
+      background-color: var(--card-bg-hover);
+    }
+
+    /* Print Stylesheet */
+    @media print {
+      @page {
+        size: landscape;
+        margin: 10mm;
+      }
+      body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      header, .input-panel, .gantt-filters, .stats-dashboard, .log-table-container, .toast, .modal-overlay, .header-actions {
+        display: none !important;
+      }
+      .grid-layout {
+        display: block !important;
+      }
+      .output-panel {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+      }
+      .gantt-chart-wrapper {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        background-color: #ffffff !important;
+      }
+      .gantt-rows-container {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+      }
+      .gantt-row {
+        page-break-inside: avoid !important;
+        background-color: #ffffff !important;
+        border-bottom: 1px solid #eee !important;
+      }
+      .drug-details-cell {
+        background-color: #ffffff !important;
+        border-right: 1px solid #eee !important;
+      }
+      .gantt-header {
+        position: static !important;
+        background-color: #f1f5f9 !important;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1013,6 +1088,14 @@
       <div class="header-actions">
         <button class="btn-secondary" id="btnThemeToggle">🌓 切換佈景</button>
         <button class="btn-secondary" id="btnDatabaseManager">⚙️ 藥物資料庫</button>
+        <div class="dropdown-wrapper" style="position: relative; display: inline-block;">
+          <button class="btn-secondary" id="btnExportMenu" style="gap: 4px;">📥 匯出圖表 <span style="font-size:0.7rem;">▼</span></button>
+          <div class="dropdown-content" id="exportDropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 4px); background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 100; min-width: 180px; padding: 4px 0;">
+            <a href="#" id="btnExportPDF">📄 匯出 PDF / 列印</a>
+            <a href="#" id="btnExportPNG" style="border-top: 1px solid var(--border-color);">📸 匯出圖片 (PNG)</a>
+            <a href="#" id="btnExportHTML" style="border-top: 1px solid var(--border-color);">🌐 匯出獨立網頁 (HTML)</a>
+          </div>
+        </div>
         <button class="btn-primary" id="btnFullScreenToggle">🖥️ 滿版顯示</button>
       </div>
     </header>
@@ -1254,6 +1337,9 @@
       "VitaCICOL": { generic: "Vitamin C (VitaCICOL)", category: "降血糖、血脂與代謝" },
       "Ezetrol": { generic: "Ezetimibe (Ezetrol)", category: "降血糖、血脂與代謝" },
       "DailyCare": { generic: "Multivitamins (DailyCare Actibest)", category: "降血糖、血脂與代謝" },
+      "B-Complex": { generic: "Vitamin B Complex", category: "降血糖、血脂與代謝" },
+      "MethyCOBAL": { generic: "Mecobalamin (MethyCOBAL)", category: "降血糖、血脂與代謝" },
+      "Tresiba": { generic: "Insulin Degludec (Tresiba)", category: "降血糖、血脂與代謝" },
 
       // 心血管與升降血壓 (Cardiovascular & Vasoactives)
       "Heparin": { generic: "Heparin Sodium", category: "心血管與升降血壓" },
@@ -1283,6 +1369,11 @@
       "Mannitol": { generic: "Mannitol", category: "降腦壓用藥" },
       "Pitressin": { generic: "Vasopressin (Pitressin)", category: "心血管與升降血壓" },
       "Exforge": { generic: "Amlodipine / Valsartan (Exforge)", category: "心血管與升降血壓" },
+      "Holdipine": { generic: "Nicardipine (Holdipine)", category: "心血管與升降血壓" },
+      "Inspra": { generic: "Eplerenone (Inspra)", category: "心血管與升降血壓" },
+      "Isoproterenol": { generic: "Isoproterenol", category: "心血管與升降血壓" },
+      "Millisrol": { generic: "Nitroglycerin (Millisrol)", category: "心血管與升降血壓" },
+      "SimDAX": { generic: "Levosimendan (SimDAX)", category: "心血管與升降血壓" },
 
       // 中樞神經與鎮靜 (CNS & Anesthetics)
       "Morphine": { generic: "Morphine Sulfate", category: "中樞神經與鎮靜" },
@@ -1295,6 +1386,8 @@
       "Clonopam": { generic: "Clonazepam (Clonopam)", category: "中樞神經與鎮靜" },
       "Keppra": { generic: "Levetiracetam (Keppra)", category: "中樞神經與鎮靜" },
       "Rocuronium": { generic: "Rocuronium Bromide", category: "中樞神經與鎮靜" },
+      "AnxiCAM": { generic: "Lorazepam (AnxiCAM)", category: "中樞神經與鎮靜" },
+      "Xanax": { generic: "Alprazolam (Xanax)", category: "中樞神經與鎮靜" },
 
       // 抗感染用藥 (Anti-infectives)
       "Cefin": { generic: "Ceftriaxone (Cefin)", category: "抗感染用藥" },
@@ -1318,6 +1411,10 @@
       "Fetroja": { generic: "Cefiderocol (Fetroja)", category: "抗感染用藥" },
       "Tygacil": { generic: "Tigecycline (Tygacil)", category: "抗感染用藥" },
       "Mero 膠囊": { generic: "Minocycline (Mero)", category: "抗感染用藥" },
+      "Gentamycin": { generic: "Gentamicin (Gentamycin)", category: "抗感染用藥" },
+      "Pipe Tazo": { generic: "Piperacillin / Tazobactam (Pipe Tazo)", category: "抗感染用藥" },
+      "Zinforo": { generic: "Ceftaroline fosamil (Zinforo)", category: "抗感染用藥" },
+      "Cefa": { generic: "Cefazolin (Cefa)", category: "抗感染用藥" },
 
       // 解熱鎮痛消炎與抗過敏 (Analgesics & Steroids & Allergy)
       "Diphenhydramine": { generic: "Diphenhydramine", category: "解熱鎮痛消炎與抗過敏" },
@@ -1345,6 +1442,9 @@
       "Smecta": { generic: "Dioctahedral Smectite (Smecta)", category: "消化道用藥" },
       "Bisadyl": { generic: "Bisacodyl (Bisadyl)", category: "消化道用藥" },
       "Takepron": { generic: "Lansoprazole (Takepron)", category: "消化道用藥" },
+      "Genurso": { generic: "Ursodeoxycholic Acid (Genurso)", category: "消化道用藥" },
+      "Stronger Neo C": { generic: "Glycyrrhizin / Cysteine / Glycine (Stronger Neo C)", category: "消化道用藥" },
+      "MgO": { generic: "Magnesium Oxide (MgO)", category: "消化道用藥" },
 
       // 呼吸道用藥 (Respiratory)
       "Combivent": { generic: "Ipratropium / Salbutamol", category: "呼吸道用藥" },
@@ -1353,6 +1453,7 @@
       "Actein": { generic: "Acetylcysteine (Actein)", category: "呼吸道用藥" },
       "Romicon-A": { generic: "Romicon-A (Antitussive)", category: "呼吸道用藥" },
       "Butanyl": { generic: "Terbutaline (Butanyl)", category: "呼吸道用藥" },
+      "Ancare": { generic: "Acetylcysteine (Ancare)", category: "呼吸道用藥" },
 
       // 電解質、點滴與水份補充 (Fluid & Electrolytes)
       "D5W": { generic: "Dextrose 5% in Water", category: "電解質、點滴與水份補充" },
@@ -1376,6 +1477,8 @@
       "Bfluid": { generic: "Amino Acids / Electrolytes / Glucose / Vitamin B1 (Bfluid)", category: "電解質、點滴與水份補充" },
       "Taita": { generic: "Electrolytes & Glucose Solution (Taita No. 5)", category: "電解質、點滴與水份補充" },
       "Calowlin": { generic: "Calcium Acetate (Calowlin)", category: "電解質、點滴與水份補充" },
+      "D5HS": { generic: "Dextrose 5% in 0.45% NaCl (D5HS)", category: "電解質、點滴與水份補充" },
+      "Ringer's": { generic: "Ringer's Solution", category: "電解質、點滴與水份補充" },
 
       // 口腔抗菌與局部用藥 (Topical & Local)
       "Parmason": { generic: "Chlorhexidine Mouthwash 0.2%", category: "口腔抗菌與局部用藥" },
@@ -1389,7 +1492,8 @@
       "Transamin": { generic: "Tranexamic Acid (Transamin)", category: "止血用藥" },
       "Minirin": { generic: "Desmopressin (Minirin)", category: "其他 (Others)" },
       "Phytonadione": { generic: "Phytonadione (Vitamin K1)", category: "止血用藥" },
-      "Tranexamic Acid": { generic: "Tranexamic Acid (Transamin)", category: "止血用藥" }
+      "Tranexamic Acid": { generic: "Tranexamic Acid (Transamin)", category: "止血用藥" },
+      "Harnalidge": { generic: "Tamsulosin (Harnalidge OCAS)", category: "泌尿系統用藥" }
     };
 
 
@@ -1411,6 +1515,7 @@
       "呼吸道用藥",
       "電解質、點滴與水份補充",
       "降血糖、血脂與代謝",
+      "泌尿系統用藥",
       "口腔抗菌與局部用藥",
       "其他 (Others)"
     ];
@@ -2040,6 +2145,34 @@ BW/圍長 [2026/06/15 04:30]體重：45.3 Kg。
         renderGantt();
         renderLogTable();
       };
+
+      // Export Dropdown Toggle
+      const btnExportMenu = document.getElementById('btnExportMenu');
+      const exportDropdown = document.getElementById('exportDropdown');
+      
+      btnExportMenu.onclick = (e) => {
+        e.stopPropagation();
+        exportDropdown.style.display = exportDropdown.style.display === 'block' ? 'none' : 'block';
+      };
+
+      document.addEventListener('click', () => {
+        exportDropdown.style.display = 'none';
+      });
+
+      document.getElementById('btnExportPDF').onclick = (e) => {
+        e.preventDefault();
+        window.print();
+      };
+
+      document.getElementById('btnExportPNG').onclick = (e) => {
+        e.preventDefault();
+        exportGanttAsImage();
+      };
+
+      document.getElementById('btnExportHTML').onclick = (e) => {
+        e.preventDefault();
+        exportGanttAsHTML();
+      };
     }
 
     // =========================================================================
@@ -2609,10 +2742,7 @@ BW/圍長 [2026/06/15 04:30]體重：45.3 Kg。
               }
 
               const matchingOrder = g.orders.find(o => o.admins.some(a => a.time === admin.time && a.nurse === admin.nurse)) || g;
-              dot.onclick = (e) => {
-                e.stopPropagation();
-                showMedDetails(matchingOrder.id);
-              };
+              dot.setAttribute('onclick', `event.stopPropagation(); showMedDetails(${matchingOrder.id})`);
               cellEl.appendChild(dot);
             }
           });
@@ -2844,6 +2974,153 @@ BW/圍長 [2026/06/15 04:30]體重：45.3 Kg。
         return `${parseInt(tokens[1], 10)}/${parseInt(tokens[2], 10)}`;
       }
       return dateStr;
+    }
+
+    function exportGanttAsHTML() {
+      showToast("正在準備網頁匯出...");
+      
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      const styles = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+      
+      // Grab elements
+      const ganttWrapper = document.querySelector('.gantt-chart-wrapper').cloneNode(true);
+      const modal = document.getElementById('detailsModal').cloneNode(true);
+      
+      // Remove any inline style overrides we might have set temporarily
+      ganttWrapper.removeAttribute('style');
+      ganttWrapper.querySelector('#ganttRows').removeAttribute('style');
+      
+      const ganttHtml = ganttWrapper.outerHTML;
+      const modalHtml = modal.outerHTML;
+      
+      const htmlContent = `<!DOCTYPE html>
+<html lang="zh-TW" data-theme="${theme}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臨床給藥甘特圖 - Standalone</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    ${styles}
+    
+    /* Standalone page layout overrides */
+    body {
+      padding: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      margin: 0;
+      height: 100vh;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .gantt-chart-wrapper {
+      max-height: 100% !important;
+      height: 100% !important;
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+    }
+  </style>
+</head>
+<body>
+
+  ${ganttHtml}
+  
+  ${modalHtml}
+
+  <script>
+    const parsedOrders = ${JSON.stringify(parsedOrders)};
+
+    function showMedDetails(id) {
+      const ord = parsedOrders.find(o => o.id === id);
+      if (!ord) return;
+
+      document.getElementById('modalGenericName').textContent = ord.genericName;
+      document.getElementById('modalCategory').innerHTML = \`<span class="badge badge-reg" style="font-size:0.8rem; padding: 2px 8px;">\${ord.category}</span>\`;
+      document.getElementById('modalBrandName').textContent = ord.brandName;
+      document.getElementById('modalRoute').textContent = ord.route;
+      document.getElementById('modalDose').textContent = ord.dose;
+      document.getElementById('modalFreq').textContent = formatFreqForDisplay(ord.freq, ord.dose);
+      document.getElementById('modalType').textContent = ord.type;
+      document.getElementById('modalDuration').textContent = \`\${formatTime(ord.start)} ~ \${formatTime(ord.end)}\`;
+      document.getElementById('modalStatus').innerHTML = \`<span class="badge \${ord.status === '使用中' ? 'badge-active' : 'badge-ended'}">\${ord.status}</span>\`;
+      document.getElementById('modalRemark').textContent = ord.remark || "無備註說明";
+      document.getElementById('modalAdminCount').textContent = ord.admins.length;
+
+      const listEl = document.getElementById('modalAdminList');
+      listEl.innerHTML = '';
+
+      if (ord.admins.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.8rem;">目前無實際給藥簽核紀錄。</div>';
+      } else {
+        ord.admins.forEach(a => {
+          const item = document.createElement('div');
+          item.className = 'admin-history-item';
+          
+          if (a.omitted) {
+            item.classList.add('omitted-item');
+            item.innerHTML = \`
+              <span>⏱️ \${formatTime(a.time)}</span>
+              <span class="status-label status-held">\${a.omitted} (\${ord.dose})</span>
+              <span class="nurse-tag">護理師: [\${a.nurse}]</span>
+            \`;
+          } else {
+            item.innerHTML = \`
+              <span>⏱️ \${formatTime(a.time)}</span>
+              <span class="status-label status-given">已給藥 (\${ord.dose})</span>
+              <span class="nurse-tag">護理師: [\${a.nurse}]</span>
+            \`;
+          }
+          listEl.appendChild(item);
+        });
+      }
+
+      document.getElementById('detailsModal').classList.add('open');
+    }
+
+    function formatFreqForDisplay(freq, dose) {
+      if (!freq) return "";
+      let cleanFreq = freq;
+      if (freq.toUpperCase().includes("STAT")) {
+        cleanFreq = freq.replace(/領藥號\\\\s*:\\\\s*\\\\d+/g, '').replace(/領藥號/g, '').trim();
+      }
+      const cleanDose = dose ? dose.replace(/\\\\s+/g, ' ').trim() : '';
+      return cleanDose ? \`\${cleanFreq} (\${cleanDose})\` : cleanFreq;
+    }
+
+    // Helper function for date formatting in Minguo calendar year
+    function formatTime(isoString) {
+      if (!isoString) return "";
+      const d = new Date(isoString);
+      const rocY = d.getFullYear() - 1911;
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return \`\${rocY}/\${m}/\${day} \${h}:\${min}\`;
+    }
+
+    // Close modal logic
+    document.getElementById('btnModalClose').onclick = () => document.getElementById('detailsModal').classList.remove('open');
+    document.getElementById('btnModalCloseFooter').onclick = () => document.getElementById('detailsModal').classList.remove('open');
+    window.onclick = (e) => {
+      if (e.target === document.getElementById('detailsModal')) document.getElementById('detailsModal').classList.remove('open');
+    };
+  <\/script>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const link = document.createElement('a');
+      link.download = `medication_gantt_\${new Date().toISOString().slice(0,10)}.html`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      showToast("🌐 網頁匯出成功！");
     }
 
 
